@@ -12,19 +12,24 @@ et les conventions du projet.
 
 ## Configuration
 
-L'app ne démarre pas sans les identifiants Supabase, passés via
-`--dart-define-from-file` pour ne jamais les committer.
+Pour le développement local avec `supabase start` (Docker), `flutter run`
+fonctionne **sans rien configurer** : l'app pointe par défaut sur le
+Supabase local (`http://10.0.2.2:54321` depuis l'émulateur Android) avec sa
+clé anon locale.
+
+```
+flutter pub get
+flutter run
+```
+
+Pour cibler un vrai projet Supabase (staging/prod) à la place, passe tes
+propres identifiants sans les committer :
 
 1. Copie `dart_define.example.json` en `dart_define.json` (déjà ignoré par
    git).
 2. Remplis `SUPABASE_URL` et `SUPABASE_ANON_KEY` avec les valeurs de ton
    projet Supabase (Project Settings → API).
-3. Lance l'app :
-
-   ```
-   flutter pub get
-   flutter run --dart-define-from-file=dart_define.json
-   ```
+3. `flutter run --dart-define-from-file=dart_define.json`
 
 ## Base de données
 
