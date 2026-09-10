@@ -2,88 +2,48 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monapp/core/domain/session_duration.dart';
 
 void main() {
-  group('SessionDuration.parseToMinutes', () {
-    test('reads whole minutes unchanged', () {
-      expect(SessionDuration.parseToMinutes('45', DurationUnit.minutes), 45);
+  group('SessionDuration.fromHoursAndMinutes', () {
+    test('combines the two wheels into minutes', () {
+      expect(SessionDuration.fromHoursAndMinutes(1, 30), 90);
+      expect(SessionDuration.fromHoursAndMinutes(0, 45), 45);
+      expect(SessionDuration.fromHoursAndMinutes(2, 0), 120);
     });
 
-    test('converts hours to minutes', () {
-      expect(SessionDuration.parseToMinutes('2', DurationUnit.hours), 120);
-    });
-
-    test('accepts a decimal comma, which is what a French keyboard offers', () {
-      expect(SessionDuration.parseToMinutes('1,5', DurationUnit.hours), 90);
-    });
-
-    test('accepts a decimal dot as well', () {
-      expect(SessionDuration.parseToMinutes('1.5', DurationUnit.hours), 90);
-    });
-
-    test('rounds a fractional minute rather than truncating it', () {
-      expect(SessionDuration.parseToMinutes('0,51', DurationUnit.hours), 31);
-    });
-
-    test('rejects a decimal count of minutes', () {
-      expect(SessionDuration.parseToMinutes('30,5', DurationUnit.minutes),
-          isNull);
-    });
-
-    test('rejects text and blanks', () {
-      expect(SessionDuration.parseToMinutes('abc', DurationUnit.hours), isNull);
-      expect(SessionDuration.parseToMinutes('', DurationUnit.minutes), isNull);
-      expect(SessionDuration.parseToMinutes(null, DurationUnit.hours), isNull);
-    });
-
-    test('reads the same duration typed in either unit', () {
+    test('reaches the database ceiling exactly at 24 h', () {
       expect(
-        SessionDuration.parseToMinutes('90', DurationUnit.minutes),
-        SessionDuration.parseToMinutes('1,5', DurationUnit.hours),
+        SessionDuration.fromHoursAndMinutes(SessionDuration.maximumHours, 0),
+        SessionDuration.maximumMinutes,
       );
     });
   });
 
   group('SessionDuration.validationMessage', () {
-    test('accepts a valid duration in each unit', () {
-      expect(SessionDuration.validationMessage('45', DurationUnit.minutes),
+    test('accepts any duration the wheels can produce below the ceiling', () {
+      expect(SessionDuration.validationMessage(1), isNull);
+      expect(SessionDuration.validationMessage(90), isNull);
+      expect(
+          SessionDuration.validationMessage(SessionDuration.maximumMinutes),
           isNull);
-      expect(
-          SessionDuration.validationMessage('1,5', DurationUnit.hours), isNull);
     });
 
-    test('names the unit the user is currently typing in', () {
+    test('rejects a duration of zero, the one the wheels can still reach', () {
       expect(
-        SessionDuration.validationMessage('', DurationUnit.minutes),
-        'Indiquez une durée en minutes',
-      );
-      expect(
-        SessionDuration.validationMessage('', DurationUnit.hours),
-        'Indiquez une durée en heures',
-      );
-    });
-
-    test('rejects zero and negative durations', () {
-      expect(
-        SessionDuration.validationMessage('0', DurationUnit.minutes),
-        'La durée doit être supérieure à 0',
-      );
-      expect(
-        SessionDuration.validationMessage('-3', DurationUnit.hours),
+        SessionDuration.validationMessage(0),
         'La durée doit être supérieure à 0',
       );
     });
 
-    test('enforces the same 24 h ceiling as the database constraint', () {
-      expect(SessionDuration.validationMessage('1440', DurationUnit.minutes),
-          isNull);
-      expect(SessionDuration.validationMessage('24', DurationUnit.hours),
-          isNull);
+    test('rejects going past 24 h, matching the database constraint', () {
       expect(
-        SessionDuration.validationMessage('1441', DurationUnit.minutes),
-        'La durée ne peut pas dépasser 24 h',
+        SessionDuration.validationMessage(SessionDuration.maximumMinutes + 1),
+        'La durée ne peut pas dépasser 24h',
       );
+      // 24 h on the hour wheel plus any minutes is the only way to overshoot.
       expect(
-        SessionDuration.validationMessage('24,5', DurationUnit.hours),
-        'La durée ne peut pas dépasser 24 h',
+        SessionDuration.validationMessage(
+          SessionDuration.fromHoursAndMinutes(SessionDuration.maximumHours, 30),
+        ),
+        isNotNull,
       );
     });
   });
@@ -99,6 +59,13 @@ void main() {
 
     test('pads the minutes so 1 h 05 does not read as 1 h 5', () {
       expect(SessionDuration.describeMinutes(65), '1 h 05');
+      expect(SessionDuration.describeMinutes(90), '1 h 30');
+    });
+
+    test('never renders the 1,30 ambiguity that the text field allowed', () {
+      // Typing "1,30" used to parse as 1.3 h, so 78 minutes. The wheels can
+      // only produce 1 h and 30 min, and that reads back as 90.
+      expect(SessionDuration.fromHoursAndMinutes(1, 30), 90);
       expect(SessionDuration.describeMinutes(90), '1 h 30');
     });
   });

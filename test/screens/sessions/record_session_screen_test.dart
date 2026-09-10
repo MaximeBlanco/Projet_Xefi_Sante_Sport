@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:monapp/core/domain/session_duration.dart';
 import 'package:monapp/models/sport.dart';
 import 'package:monapp/providers/sport_provider.dart';
 import 'package:monapp/screens/sessions/record_session_screen.dart';
+import 'package:monapp/widgets/duration_wheel_picker.dart';
 
 import '../../support/test_fixtures.dart';
 
@@ -38,7 +40,24 @@ void main() {
       expect(find.textContaining('Course à pied'), findsWidgets);
     });
 
-    testWidgets('refuses a duration that is not a positive integer',
+    testWidgets('offers wheels rather than a duration to type', (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: [
+            sportListProvider.overrideWith((ref) => buildSportCatalogue()),
+          ],
+          child: const RecordSessionScreen(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(DurationWheelPicker), findsOneWidget);
+      // The screen used to expose the duration as free text, which let "1,30"
+      // be read as 78 minutes. The only remaining text field is none at all.
+      expect(find.byType(TextFormField), findsNothing);
+    });
+
+    testWidgets('starts on a usable duration and states what it scores',
         (tester) async {
       await tester.pumpWidget(
         buildTestApp(
@@ -50,20 +69,38 @@ void main() {
       );
       await tester.pump();
 
-      await tester.tap(
-        find.widgetWithText(ElevatedButton, 'Enregistrer la séance'),
+      expect(
+        find.text(
+          '${SessionDuration.describeMinutes(SessionDuration.defaultMinutes)}'
+          ' · ${SessionDuration.defaultMinutes} pts',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('La durée doit être supérieure à 0'), findsNothing);
+    });
+
+    testWidgets('scrolling the minute wheel updates what will be recorded',
+        (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: [
+            sportListProvider.overrideWith((ref) => buildSportCatalogue()),
+          ],
+          child: const RecordSessionScreen(),
+        ),
       );
       await tester.pump();
 
-      expect(find.text('Indiquez une durée en minutes'), findsOneWidget);
-
-      await tester.enterText(find.byType(TextFormField), '0');
-      await tester.tap(
-        find.widgetWithText(ElevatedButton, 'Enregistrer la séance'),
+      final minuteWheel = find.byWidgetPredicate(
+        (widget) => widget is Semantics && widget.properties.label == 'Minutes',
       );
-      await tester.pump();
+      expect(minuteWheel, findsOneWidget);
 
-      expect(find.text('La durée doit être supérieure à 0'), findsOneWidget);
+      // Two notches up from 30 minutes lands on 28.
+      await tester.drag(minuteWheel, const Offset(0, 88));
+      await tester.pumpAndSettle();
+
+      expect(find.text('28 min · 28 pts'), findsOneWidget);
     });
 
     testWidgets('shows the French empty state when no sport is available',

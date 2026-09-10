@@ -143,8 +143,8 @@ production.
 Miroir de la definition of done (cahier des charges, section 6) :
 
 - Créer un compte (email, mot de passe, nom, poids) et se connecter.
-- Enregistrer une séance : sport de la liste fixe, durée saisie en minutes ou
-  en heures (`1,5 h` vaut 90 min ; la base ne stocke que des minutes), date
+- Enregistrer une séance : sport de la liste fixe, durée réglée sur deux
+  molettes heures/minutes (la base ne stocke que des minutes), date
   (les dates futures sont refusées).
 - Calories réelles issues de la Calories Burned API via l'Edge Function,
   stockées avec la séance.

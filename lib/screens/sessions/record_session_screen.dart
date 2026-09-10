@@ -1,7 +1,6 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -11,6 +10,7 @@ import '../../models/sport.dart';
 import '../../providers/record_session_controller.dart';
 import '../../providers/sport_provider.dart';
 import '../../widgets/async_value_view.dart';
+import '../../widgets/duration_wheel_picker.dart';
 
 class RecordSessionScreen extends ConsumerStatefulWidget {
   const RecordSessionScreen({super.key});
@@ -24,35 +24,14 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
   static const _selectableYearsInThePast = 1;
 
   final _formKey = GlobalKey<FormState>();
-  final _durationFieldKey = GlobalKey<FormFieldState<String>>();
-  final _durationController = TextEditingController();
   final _dateFormat = DateFormat('dd/MM/yyyy');
 
   Sport? _selectedSport;
-  DurationUnit _durationUnit = DurationUnit.minutes;
+  int _durationMin = SessionDuration.defaultMinutes;
   DateTime _selectedDate = DateUtils.dateOnly(DateTime.now());
   String? _errorMessage;
 
-  int? get _durationMin =>
-      SessionDuration.parseToMinutes(_durationController.text, _durationUnit);
-
-  void _changeDurationUnit(DurationUnit unit) {
-    if (unit == _durationUnit) return;
-    setState(() => _durationUnit = unit);
-    // The same digits mean something else now, so any message already on the
-    // field is about a value the user is no longer entering. Only this field
-    // is revalidated: a form-wide pass would also flag a sport not yet chosen,
-    // and an empty field is not a mistake until the user submits.
-    if (_durationController.text.trim().isNotEmpty) {
-      _durationFieldKey.currentState?.validate();
-    }
-  }
-
-  @override
-  void dispose() {
-    _durationController.dispose();
-    super.dispose();
-  }
+  String? get _durationError => SessionDuration.validationMessage(_durationMin);
 
   Future<void> _pickDate() async {
     final today = DateUtils.dateOnly(DateTime.now());
@@ -79,10 +58,9 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
 
   Future<void> _submit() async {
     final selectedSport = _selectedSport;
-    final durationMin = _durationMin;
     if (!_formKey.currentState!.validate() ||
         selectedSport == null ||
-        durationMin == null) {
+        _durationError != null) {
       return;
     }
 
@@ -94,7 +72,7 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
         await ref.read(recordSessionControllerProvider.notifier).submit(
               sport: selectedSport,
               date: _selectedDate,
-              durationMin: durationMin,
+              durationMin: _durationMin,
             );
 
     if (!mounted) return;
@@ -131,16 +109,10 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
     return "L'enregistrement de la séance a échoué, réessayez.";
   }
 
-  String? _validateDuration(String? value) =>
-      SessionDuration.validationMessage(value, _durationUnit);
-
-  /// Points equal the duration in minutes, so showing the conversion tells the
-  /// user what they are about to score before they commit to it.
-  String? get _durationHelperText {
-    final durationMin = _durationMin;
-    if (durationMin == null || durationMin <= 0) return null;
-    return '${SessionDuration.describeMinutes(durationMin)} · $durationMin pts';
-  }
+  /// Points equal the duration in minutes, so reading the wheels back tells
+  /// the user what they are about to score before they commit to it.
+  String get _durationSummary =>
+      '${SessionDuration.describeMinutes(_durationMin)} · $_durationMin pts';
 
   Sport? _matchingSportInCatalogue(List<Sport> sports) {
     final selectedSportId = _selectedSport?.id;
@@ -201,41 +173,20 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                       sport == null ? 'Choisissez un sport' : null,
                 ),
                 const SizedBox(height: 16),
-                SegmentedButton<DurationUnit>(
-                  segments: [
-                    for (final unit in DurationUnit.values)
-                      ButtonSegment<DurationUnit>(
-                        value: unit,
-                        label: Text(unit.label),
-                      ),
-                  ],
-                  selected: {_durationUnit},
-                  onSelectionChanged: isSubmitting
-                      ? null
-                      : (selection) => _changeDurationUnit(selection.first),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: _durationFieldKey,
-                  controller: _durationController,
-                  enabled: !isSubmitting,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  keyboardType: TextInputType.numberWithOptions(
-                    decimal: _durationUnit == DurationUnit.hours,
-                  ),
-                  inputFormatters: [
-                    if (_durationUnit == DurationUnit.hours)
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-                    else
-                      FilteringTextInputFormatter.digitsOnly,
-                  ],
+                InputDecorator(
+                  isEmpty: false,
                   decoration: InputDecoration(
                     labelText: 'Durée',
-                    suffixText: _durationUnit.fieldSuffix,
-                    helperText: _durationHelperText,
+                    errorText: _durationError,
+                    helperText:
+                        _durationError == null ? _durationSummary : null,
                   ),
-                  onChanged: (_) => setState(() {}),
-                  validator: _validateDuration,
+                  child: DurationWheelPicker(
+                    durationMin: _durationMin,
+                    enabled: !isSubmitting,
+                    onDurationChanged: (durationMin) =>
+                        setState(() => _durationMin = durationMin),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 InkWell(
