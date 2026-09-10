@@ -12,6 +12,14 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 
 ## 2. Contraintes obligatoires
 
+- **Le projet est 100% Flutter côté code applicatif.** On n'écrit pas de
+  backend dans un autre langage. Les données partagées (comptes,
+  classements, contacts) vivent dans **Supabase** (backend-as-a-service :
+  Postgres + Auth + API REST auto-générée + Realtime), configuré via du SQL
+  (schéma, policies) plutôt que du code serveur qu'on développe nous-mêmes.
+  Aucune persistance uniquement locale (pas de "tout en Hive/SQLite embarqué
+  sans backend") : Supabase est la source de vérité, le mobile s'y connecte
+  directement avec le SDK `supabase_flutter`.
 - **La contrainte imposée de base : intégrer une API externe tierce**, sur
   le principe d'une app de stats League of Legends qui consomme l'API Riot
   Games — une vraie fonctionnalité doit s'appuyer sur un service tiers
@@ -19,14 +27,8 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
   rôle différent — voir section 4 :
   - **wger.de** — catalogue de sports/exercices (gratuite, sans clé).
   - **Calories Burned API (api-ninjas.com)** — calcul des calories brûlées
-    par séance (clé gratuite requise).
-- Notre propre API (backend Laravel, section 4) n'est pas cette contrainte
-  imposée : c'est un choix d'architecture qu'on fait nous-mêmes, nécessaire
-  pour que les comptes, classements et contacts fonctionnent entre
-  plusieurs utilisateurs (ça ne peut pas tenir en local sur chaque
-  téléphone). Aucune persistance uniquement locale (pas de "tout en
-  Hive/SQLite embarqué sans backend") : le stockage central est la source
-  de vérité, le mobile consomme l'API en HTTP/JSON.
+    par séance (clé gratuite requise, appelée depuis une Supabase Edge
+    Function pour ne jamais exposer la clé côté mobile).
 - Cible principale : **Android** (testé sur émulateur), l'app doit rester
   compatible iOS sans usage d'API spécifique à une plateforme.
 - Respect strict de l'identité visuelle XEFI (section 8).
@@ -34,10 +36,10 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
   deux — toute déviation d'architecture doit être discutée avant d'être
   codée, pas décidée en solo dans une PR.
 - **Tout le code est en anglais** : noms de fichiers, de classes, de
-  fonctions, de variables, de routes API, de champs JSON, messages de
-  commit. Seul le texte affiché à l'utilisateur final (labels UI) peut
-  rester en français, puisque l'app s'adresse à des collaborateurs
-  francophones. Voir section 9 pour le détail.
+  fonctions, de variables, de tables/colonnes SQL, messages de commit. Seul
+  le texte affiché à l'utilisateur final (labels UI) peut rester en
+  français, puisque l'app s'adresse à des collaborateurs francophones. Voir
+  section 9 pour le détail.
 - **Nommage explicite plutôt que commentaires.** Le code doit se lire sans
   commentaire : un nom de variable/fonction/classe doit dire ce qu'il fait.
   Un commentaire n'est acceptable que pour expliquer un "pourquoi" non
@@ -48,7 +50,7 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 
 ### Socle commun (V1, obligatoire)
 
-- Création de compte / connexion (email + mot de passe, JWT).
+- Création de compte / connexion (email + mot de passe, via Supabase Auth).
 - Rejoindre une équipe est **optionnel** (l'app est utilisable sans jamais
   en rejoindre une — voir "Contacts" ci-dessous pour l'alternative).
 - Ajout de collègues en **contacts** : recherche par nom/email, envoi d'une
@@ -67,13 +69,14 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
   libre par un utilisateur.
 - Écran de saisie d'une séance (formulaire rapide, optimisé mobile).
 - **Suivi GPS pour les sports outdoor** (course à pied, vélo, marche —
-  déterminé par `Sport.isGpsTrackable`) : carte en direct qui trace le
+  déterminé par `sports.is_gps_trackable`) : carte en direct qui trace le
   parcours pendant la séance, distance, vitesse instantanée et dénivelé
   calculés à la volée. À la fin de la séance, le tracé, la distance et le
-  dénivelé sont envoyés au backend avec la séance (voir section 5 et 6).
+  dénivelé sont envoyés avec la séance (voir section 5 et 6).
 - Intégration de la Calories Burned API : à l'enregistrement d'une séance,
-  le backend appelle l'API externe (activité + poids de l'utilisateur +
-  durée) et stocke le nombre de calories brûlées retourné.
+  l'app appelle l'Edge Function `calculate-calories` (activité + poids de
+  l'utilisateur + durée) qui relaie vers l'API externe et renvoie le nombre
+  de calories brûlées, stocké avec la séance.
 - Écran "Mon profil" : historique, total de points, calories brûlées
   cumulées, séries (streaks), répartition par sport (graphique simple).
 - Gestion du compte (inscription, connexion, déconnexion, édition profil —
@@ -95,10 +98,10 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 - Mise en avant du rang de l'utilisateur connecté (ex: "Tu es 4e sur 32").
 
 > Cette séparation en deux lots est une proposition de base pour répartir le
-> travail à deux. Le contrat d'API (section 6) et le modèle de données
-> (section 5) sont **partagés et ne doivent pas être modifiés unilatéralement**
-> par un seul lot — toute évolution du contrat se fait via une PR dédiée,
-> revue par les deux devs.
+> travail à deux. Le schéma de données partagé (section 5) et les vues/RPC
+> de classement (section 6) sont **partagés et ne doivent pas être modifiés
+> unilatéralement** par un seul lot — toute évolution passe par une PR
+> dédiée, revue par les deux devs.
 
 ### V2 (hors périmètre initial, backlog)
 
@@ -109,164 +112,161 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 
 ## 4. Architecture technique
 
+Projet **100% Flutter** côté code applicatif — pas de backend qu'on
+développe nous-mêmes dans un autre langage. Les données partagées vivent
+dans **Supabase**, configuré en SQL (schéma, Row Level Security, vues) et
+via une Edge Function minimale pour cacher une clé API. Tout le reste est
+du Dart.
+
 ```
 repo/
-├── app/                       # Application Flutter
-│   ├── lib/
-│   │   ├── main.dart
-│   │   ├── app.dart
-│   │   ├── core/              # thème, constantes, client API, config env
-│   │   ├── models/            # classes de données (User, Team, Sport, Session)
-│   │   ├── data/               # repositories (laravel_rest_api_flutter)
-│   │   ├── providers/          # state management (Riverpod)
-│   │   ├── screens/            # écrans (un dossier par feature)
-│   │   └── widgets/            # composants réutilisables
-│   └── test/
-└── server/                    # API Laravel
-    ├── app/
-    │   ├── Http/Controllers/Api/   # un contrôleur par ressource
-    │   ├── Http/Requests/           # validation des entrées (Form Requests)
-    │   ├── Http/Resources/          # formatage JSON des réponses
-    │   ├── Models/                  # User, Team, Sport, Session
-    │   ├── Services/CaloriesBurnedService.php   # appel à la Calories Burned API
-    │   ├── Services/WgerCatalogService.php      # appel à wger.de
-    │   └── Console/Commands/SyncSportsFromWger.php   # commande artisan de sync
-    ├── routes/api.php
-    ├── database/migrations/
-    └── tests/
+├── lib/
+│   ├── main.dart
+│   ├── app.dart
+│   ├── core/                   # thème, constantes, client Supabase, config env
+│   ├── models/                 # classes de données (User, Team, Sport, Session)
+│   ├── data/                   # repositories (appels supabase_flutter)
+│   ├── providers/               # state management (Riverpod)
+│   ├── screens/                  # écrans (un dossier par feature)
+│   └── widgets/                   # composants réutilisables
+├── test/
+├── supabase/
+│   ├── migrations/               # schéma SQL (tables, policies, vues, RPC)
+│   ├── functions/
+│   │   └── calculate-calories/    # Edge Function (Deno/TS) — appel à la Calories Burned API
+│   └── seed/sports_from_wger.sql  # généré une fois par tool/sync_sports_from_wger.dart
+└── tool/
+    └── sync_sports_from_wger.dart # script Dart ponctuel, pas un service qui tourne en continu
 ```
 
 **Stack retenue :**
 
 - **Flutter** (Dart) — state management : **Riverpod** (`flutter_riverpod`).
-  Pas de setState global, pas de mélange de state managers. Côté accès
-  réseau, utiliser le package officiel **XEFI `laravel_rest_api_flutter`**
-  (https://pub.dev/packages/laravel_rest_api_flutter,
-  doc : https://xefi.github.io/laravel-rest-api-flutter-doc/) plutôt que
-  du `http`/`dio` brut — c'est l'outil que XEFI maintient publiquement pour
-  connecter une app Flutter à une API Laravel (repositories typés, search,
-  mutate, actions). L'utiliser nous met dans les clous de leurs pratiques
-  réelles, pas juste dans un style "générique".
-- **Laravel (PHP)** pour l'API — c'est le pendant naturel du package Flutter
-  ci-dessus, et le stack que XEFI utilise réellement pour ses API mobiles
-  (voir section 11). Construire les endpoints selon les conventions REST
-  Laravel standard (Controllers + Form Requests + API Resources) pour que
-  `laravel_rest_api_flutter` s'y branche sans friction.
-- **Base de données : SQLite** en V1 (fichier unique, zéro configuration,
-  suffisant pour deux devs qui développent chacun en local ; migrable vers
-  MySQL/PostgreSQL plus tard via les migrations Laravel sans changer le
-  code métier).
-- **Auth : Laravel Sanctum** (tokens d'API, l'approche standard Laravel pour
-  une API consommée par une app mobile — équivalent JWT mais intégré nativement).
-- **API externe #1 (calories) :** `CaloriesBurnedService` côté Laravel
-  appelle `https://api.api-ninjas.com/v1/caloriesburned` avec la clé API
-  stockée en `.env` (`CALORIES_API_KEY`), **jamais exposée côté Flutter**.
-  Le mobile ne parle qu'à notre propre API, qui fait elle-même le relais
-  vers le service externe — voir contrat d'API section 6.
-- **API externe #2 (catalogue de sports) :** `WgerCatalogService` appelle
-  `https://wger.de/api/v2/exercisecategory/` et `/exercise/` (endpoints
-  publics, **sans clé**) pour peupler la table `Sport` locale. Ce n'est
-  **pas** un appel en direct à chaque écran — la commande artisan
-  `sports:sync-from-wger` importe/actualise les données une fois (au setup,
-  puis relançable), et l'app consomme ensuite notre propre `/api/sports`
-  comme n'importe quelle autre ressource. Ça évite de dépendre de la
-  disponibilité de wger.de à chaque ouverture de l'app, et ça nous laisse
-  ajouter nos propres champs (`emoji`, `pointsPerUnit`) que wger n'a pas.
+  Pas de setState global, pas de mélange de state managers.
+- **Supabase** comme backend, via le package `supabase_flutter` : auth,
+  requêtes Postgres (CRUD direct sur les tables avec son query builder,
+  filtré par Row Level Security), et Realtime pour que les classements se
+  mettent à jour en direct sans qu'on ait à coder du polling.
+- **Base de données : Postgres géré par Supabase.** Le schéma (section 5)
+  est défini en SQL dans `supabase/migrations/`, avec **Row Level Security
+  activée sur chaque table** — chacun ne peut modifier que ses propres
+  données (`user_id = auth.uid()`), la lecture des classements reste
+  publique en lecture seule.
+- **Auth : Supabase Auth** (email + mot de passe intégré, gère les tokens
+  et les sessions — pas de JWT à coder nous-mêmes).
+- **Classements : vues/fonctions SQL** (`rankings_global`,
+  `rankings_by_sport`, `rankings_teams`, `rankings_contacts`) définies dans
+  les migrations et exposées automatiquement en REST par Supabase
+  (PostgREST) — pas de route à coder, juste du SQL versionné.
+- **API externe #1 (calories) :** une **Supabase Edge Function**
+  (`calculate-calories`, quelques lignes de TypeScript/Deno — pas un
+  backend applicatif) reçoit `{activity, weightKg, durationMin}`, appelle
+  `api.api-ninjas.com` avec la clé stockée en secret Supabase
+  (`CALORIES_API_KEY`), et renvoie `caloriesBurned`. C'est le seul bout de
+  code qui n'est pas du Dart, et il n'existe que pour ne jamais exposer la
+  clé API dans le bundle Flutter.
+- **API externe #2 (catalogue de sports) :** `tool/sync_sports_from_wger.dart`
+  est un script Dart exécuté **une fois** (pas un service qui tourne en
+  continu) pour appeler `wger.de/api/v2/exercisecategory` et `/exercise`,
+  et générer `supabase/seed/sports_from_wger.sql`, appliqué à la base au
+  démarrage du projet. Ça nous laisse ajouter nos propres colonnes
+  (`emoji`, `points_per_unit`) que wger n'a pas.
 - **Suivi GPS :** `geolocator` pour le flux de position, `flutter_map` +
   `latlong2` pour la carte, avec des tuiles **OpenStreetMap** — gratuites et
   sans clé API, contrairement à Google Maps qui demande une facturation
   activée dès le premier appel. Distance (formule de Haversine entre points
   consécutifs) et dénivelé (somme des montées) calculés côté Flutter pendant
-  l'enregistrement, puis envoyés au backend à la fin de la séance — pas de
-  recalcul serveur du tracé brut.
+  l'enregistrement, envoyés avec la séance.
 - Pas de dépendance native lourde côté Flutter sans raison forte (ex: évitez
   tout package qui tire `path_provider`/JNI si un équivalent HTTP simple
   existe — source de plantages Gradle constatée sur ce projet).
 
 ## 5. Modèle de données (base commune, ne pas dévier sans concertation)
 
+Tables Postgres (Supabase), noms en `snake_case` anglais. `profiles.id`
+référence `auth.users.id` (Supabase Auth gère le mot de passe, on ne stocke
+jamais de hash nous-mêmes).
+
 ```
-User
-  id            String (uuid)
-  name          String
-  email         String (unique)
-  passwordHash  String
-  weightKg      Float       # requis pour le calcul de calories brûlées
-  teamId        String (FK Team, nullable)
-  createdAt     DateTime
+profiles
+  id              uuid (PK, = auth.users.id)
+  name            text
+  weight_kg       numeric        # requis pour le calcul de calories brûlées
+  team_id         uuid (FK teams, nullable)
+  created_at      timestamptz
 
-Team
-  id            String (uuid)
-  name          String
-  colorValue    Int         # couleur d'équipe, cohérente avec la charte
-  createdAt     DateTime
+teams
+  id              uuid (PK)
+  name            text
+  color_value     integer        # couleur d'équipe, cohérente avec la charte
+  created_at      timestamptz
 
-Contact
-  id              String (uuid)
-  requesterId     String (FK User)
-  addresseeId     String (FK User)
-  status          Enum(pending, accepted)   # pas de "declined" stocké, on delete la ligne
-  createdAt       DateTime
+contacts
+  id              uuid (PK)
+  requester_id    uuid (FK profiles)
+  addressee_id    uuid (FK profiles)
+  status          text check (status in ('pending', 'accepted'))
+  created_at      timestamptz
 
-Sport
-  id              String (uuid)
-  name            String
-  emoji           String
-  pointsPerUnit   Int         # points attribués par séance ou par tranche de temps
-  wgerId          Int (nullable)   # id d'origine côté wger.de, pour re-synchroniser
-  isGpsTrackable  Bool        # true pour course à pied, vélo, marche...
+sports
+  id                uuid (PK)
+  name              text
+  emoji             text
+  points_per_unit   integer      # points attribués par séance ou par tranche de temps
+  wger_id           integer (nullable)   # id d'origine côté wger.de, pour re-synchroniser
+  is_gps_trackable  boolean      # true pour course à pied, vélo, marche...
 
-Session
-  id                String (uuid)
-  userId            String (FK User)
-  sportId           String (FK Sport)
-  date              DateTime
-  durationMin       Int
-  points            Int            # calculé côté serveur à l'enregistrement
-  caloriesBurned    Float          # rempli via l'appel à la Calories Burned API
-  distanceKm        Float (nullable)      # uniquement si Sport.isGpsTrackable
-  elevationGainM    Float (nullable)      # dénivelé positif cumulé
-  route             Json (nullable)       # [{lat, lng, altitude, timestampMs}, ...]
-  createdAt         DateTime
+sessions
+  id                 uuid (PK)
+  user_id            uuid (FK profiles)
+  sport_id           uuid (FK sports)
+  date               date
+  duration_min       integer
+  points             integer          # calculé côté client à l'enregistrement
+  calories_burned    numeric          # rempli via l'Edge Function calculate-calories
+  distance_km        numeric (nullable)   # uniquement si sports.is_gps_trackable
+  elevation_gain_m    numeric (nullable)  # dénivelé positif cumulé
+  route              jsonb (nullable)     # [{lat, lng, altitude, timestampMs}, ...]
+  created_at         timestamptz
 ```
 
-**Barème de points (V1, simple) :** `points = durationMin` (1 minute = 1
+**Barème de points (V1, simple) :** `points = duration_min` (1 minute = 1
 point). Facile à comprendre, ajustable plus tard par sport si besoin
-(`pointsPerUnit` est déjà prévu pour ça).
+(`points_per_unit` est déjà prévu pour ça).
 
-## 6. Contrat d'API (V1)
+**Row Level Security (principe pour chaque table) :** un utilisateur peut
+lire toutes les lignes utiles aux classements (`sessions`, `profiles` en
+lecture publique restreinte aux champs nécessaires), mais ne peut
+insérer/modifier/supprimer que les lignes où `user_id = auth.uid()` (ou
+`requester_id` pour `contacts`). Les policies exactes sont définies dans
+les migrations SQL, pas laissées à l'appréciation de chaque dev.
 
-Toutes les routes sous `/api`. Réponses en JSON. Erreurs au format
-`{ "error": "message" }` avec le code HTTP adapté (400/401/404/500).
+## 6. Accès aux données (Supabase, pas de routes à coder)
 
-| Méthode | Route                        | Auth | Description                                  |
-|---------|-------------------------------|------|-----------------------------------------------|
-| POST    | `/auth/register`             | non  | Crée un compte `{name, email, password, teamId?}` |
-| POST    | `/auth/login`                | non  | `{email, password}` → `{token, user}`         |
-| GET     | `/me`                         | oui  | Profil de l'utilisateur connecté              |
-| GET     | `/teams`                      | non  | Liste des équipes                             |
-| POST    | `/teams`                      | oui  | Crée une équipe `{name, colorValue}`          |
-| GET     | `/contacts`                   | oui  | Liste des contacts (acceptés + demandes en attente) |
-| POST    | `/contacts`                   | oui  | Envoie une demande `{addresseeId}`            |
-| PATCH   | `/contacts/:id/accept`        | oui  | Accepte une demande reçue                     |
-| DELETE  | `/contacts/:id`               | oui  | Supprime un contact ou annule/refuse une demande |
-| GET     | `/sports`                     | non  | Liste des sports disponibles                  |
-| POST    | `/sports`                     | oui  | Ajoute un sport libre `{name, emoji, isGpsTrackable}` (hors catalogue wger.de) |
-| GET     | `/sessions?userId=`           | oui  | Historique de séances (soi-même par défaut)   |
-| POST    | `/sessions`                   | oui  | Enregistre une séance `{sportId, date, durationMin, distanceKm?, elevationGainM?, route?}` → appelle en interne la Calories Burned API et renvoie la séance avec `caloriesBurned` rempli (`distanceKm`/`elevationGainM`/`route` uniquement pour un sport GPS-trackable) |
-| GET     | `/rankings/global`            | non  | Classement individuel toutes activités confondues |
-| GET     | `/rankings/sport/:sportId`    | non  | Classement individuel pour un sport donné     |
-| GET     | `/rankings/teams`             | non  | Classement par équipe                         |
-| GET     | `/rankings/contacts`          | oui  | Classement parmi les contacts acceptés de l'utilisateur connecté |
+Pas de contrat de routes REST à écrire : `supabase_flutter` interroge
+directement les tables (CRUD via le query builder, filtré par Row Level
+Security), et les classements/actions qui demandent un calcul passent par
+du SQL versionné ou l'Edge Function ci-dessous.
 
-`POST /sessions` est la seule route qui touche l'API externe : le Flutter
-n'appelle jamais `api.api-ninjas.com` directement, tout passe par notre
-backend (clé API tenue secrète, et le calcul reste correct même si l'API
-externe change de format un jour — un seul endroit à corriger).
+| Besoin                              | Mécanisme Supabase                                         |
+|--------------------------------------|--------------------------------------------------------------|
+| Inscription / connexion              | `supabase.auth.signUp()` / `signInWithPassword()`            |
+| Profil connecté                      | `supabase.from('profiles').select().eq('id', uid)`            |
+| Liste / création d'équipes           | CRUD direct sur `teams` (lecture publique, écriture authentifiée) |
+| Contacts (demande, accepter, lister, retirer) | CRUD direct sur `contacts`, filtré par RLS sur `requester_id`/`addressee_id` |
+| Liste / ajout libre de sports        | CRUD direct sur `sports`                                     |
+| Historique de séances                | `supabase.from('sessions').select().eq('user_id', uid)`       |
+| Enregistrer une séance               | 1) appel à l'Edge Function `calculate-calories` pour obtenir `caloriesBurned`, 2) insert dans `sessions` avec ce résultat |
+| Classement global / par sport / équipes / contacts | `SELECT` sur les vues SQL `rankings_global`, `rankings_by_sport`, `rankings_teams`, `rankings_contacts` |
 
-Ce contrat est le point de synchronisation entre les deux lots : le Lot A
-peut développer son UI contre des réponses mockées respectant ce format
-pendant que le Lot B implémente les routes de classement, et inversement.
+L'Edge Function `calculate-calories` est le seul point de passage vers
+l'API externe de calories : le Flutter n'appelle jamais
+`api.api-ninjas.com` directement, la clé reste secrète côté Supabase.
+
+Ce document (schéma + vues) est le point de synchronisation entre les deux
+lots : le Lot A peut développer son UI contre le schéma de `sessions`/
+`profiles` pendant que le Lot B écrit les vues de classement, et
+inversement.
 
 ## 7. Git & workflow (GitHub, duo)
 
@@ -283,9 +283,10 @@ pendant que le Lot B implémente les routes de classement, et inversement.
 - **Revue croisée obligatoire** : chaque PR est relue par l'autre
   développeur avant merge, même en solo-review rapide — l'objectif est
   la cohérence de style et d'archi, pas juste "ça compile".
-- Avant toute PR : `flutter analyze` + `flutter test` côté app,
-  `php artisan test` côté serveur doivent passer sans erreur.
-- Le contrat d'API (section 6) et le schéma de données (section 5) ne se
+- Avant toute PR : `flutter analyze` + `flutter test` doivent passer sans
+  erreur. Toute migration SQL (`supabase/migrations/`) doit s'appliquer
+  proprement sur une base vide (`supabase db reset` en local).
+- Le schéma de données et les vues de classement (sections 5 et 6) ne se
   modifient que dans une PR dédiée, explicitement signalée aux deux devs.
 
 ## 8. Identité visuelle XEFI (Design System)
@@ -313,7 +314,7 @@ Couleurs et typographies extraites directement du site officiel xefi.fr
 - Application concrète dans l'app : AppBar noire avec logo, accent rouge
   réservé aux éléments d'action et à la mise en valeur du classement
   (médaille/couleur du rang 1-2-3), fond blanc, cartes avec ombre légère,
-  couleurs d'équipe (`Team.colorValue`) utilisées uniquement pour des
+  couleurs d'équipe (`teams.color_value`) utilisées uniquement pour des
   badges/étiquettes, jamais en fond plein écran.
 
 ## 9. Conventions de code
@@ -321,10 +322,10 @@ Couleurs et typographies extraites directement du site officiel xefi.fr
 **Langue et nommage (obligatoire, les deux lots)**
 
 - Code 100% en anglais : `sessionRepository`, `computeStreak()`,
-  `TeamRankingScreen`, champs JSON (`durationMin`, `teamId`...), noms de
-  fichiers (`session_repository.dart`, `team_ranking_screen.dart`,
-  `rankings.route.js`...). Aucun mot français dans le code, y compris dans
-  les noms de variables temporaires ou de tests.
+  `TeamRankingScreen`, tables/colonnes SQL (`duration_min`, `team_id`...),
+  noms de fichiers (`session_repository.dart`, `team_ranking_screen.dart`,
+  `20260910_create_sessions_table.sql`...). Aucun mot français dans le
+  code, y compris dans les noms de variables temporaires ou de tests.
 - Seules les chaînes affichées à l'écran (`Text('Mes séances')`,
   messages d'erreur utilisateur) restent en français — elles sont data,
   pas identifiants de code.
@@ -347,21 +348,19 @@ Couleurs et typographies extraites directement du site officiel xefi.fr
   partagé entre écrans.
 - Toute couleur/police vient de `core/theme` — jamais de couleur en dur
   dans un widget d'écran.
+- Aucune clé secrète en dur dans le code Dart (clé Supabase anon key
+  publique OK, mais jamais de clé d'API tierce type `CALORIES_API_KEY`).
 
-**Laravel/API**
+**Supabase (SQL / Edge Functions)**
 
-- Un contrôleur par ressource (`Http/Controllers/Api/SessionController.php`),
-  méthodes fines (`index`, `store`, `show`...), pas de logique métier dedans.
-- Validation via **Form Requests** dédiées (`StoreSessionRequest`), jamais de
-  `$request->validate()` inline dans un contrôleur.
-- Réponses formatées via **API Resources** (`SessionResource`) pour garder
-  un JSON stable et cohérent, découplé du schéma de base de données.
-- Appel à l'API externe encapsulé dans un **Service** dédié
-  (`CaloriesBurnedService`), injecté dans le contrôleur — jamais d'appel
-  HTTP direct depuis un contrôleur ou un modèle.
-- Erreurs toujours au format `{ "error": "..." }`, jamais de stack trace
-  renvoyée au client (gérer ça dans le handler d'exceptions Laravel).
-- PSR-12 comme style de code PHP (respecté nativement par Laravel Pint).
+- Une migration = un changement cohérent (une table, ou une évolution
+  claire), jamais un gros dump fourre-tout.
+- Row Level Security activée sur **toutes** les tables dès leur création —
+  pas de table "on sécurisera plus tard".
+- Vues de classement en SQL pur, testées manuellement avec des données de
+  seed avant d'être branchées à l'UI.
+- L'Edge Function `calculate-calories` ne fait que relayer l'appel externe
+  et formatter la réponse — aucune autre logique métier dedans.
 
 ## 10. Definition of Done (V1)
 
@@ -377,10 +376,10 @@ Couleurs et typographies extraites directement du site officiel xefi.fr
 - [ ] `flutter analyze` et `flutter test` passent sans erreur.
 - [ ] L'app tourne sur l'émulateur Android sans crash sur le parcours
       principal (inscription → séance → classement).
-- [ ] Toutes les routes du contrat d'API (section 6) sont implémentées et
-      testées manuellement (ex: via un fichier `.http` ou Postman).
+- [ ] Les migrations Supabase s'appliquent proprement sur une base vide.
 - [ ] Une séance enregistrée affiche bien des calories brûlées cohérentes
-      (issues de la Calories Burned API, pas une valeur inventée/statique).
+      (issues de la Calories Burned API via l'Edge Function, pas une valeur
+      inventée/statique).
 
 ## 11. Sources
 
@@ -396,13 +395,15 @@ Couleurs et typographies extraites directement du site officiel xefi.fr
   un document interne. À demander en interne si des règles plus précises
   sont nécessaires (variantes de logo, marges de sécurité...).
 
-**Stack technique XEFI**
+**Stack technique**
 
-- https://github.com/xefi (organisation GitHub publique XEFI, 32 dépôts)
-- https://github.com/xefi/laravel-rest-api-flutter (package officiel XEFI :
-  intégration Flutter ↔ API REST Laravel)
-- https://xefi.github.io/laravel-rest-api-flutter-doc/ (documentation du
-  package, a guidé le choix de Laravel + Sanctum comme backend)
+- https://github.com/xefi (organisation GitHub publique XEFI, 32 dépôts) et
+  https://github.com/xefi/laravel-rest-api-flutter (package officiel XEFI :
+  Flutter ↔ API REST Laravel) avaient initialement motivé un choix de
+  backend Laravel. **Ce choix a été abandonné** : le périmètre du projet
+  est explicitement Flutter uniquement, donc le backend est un BaaS
+  (Supabase) plutôt qu'un serveur qu'on développe nous-mêmes. Gardé ici
+  comme trace de la décision, pas comme choix retenu.
 
 **API externe**
 
@@ -412,3 +413,8 @@ Couleurs et typographies extraites directement du site officiel xefi.fr
   sans clé le 2026-09-10, ex. `GET /api/v2/exercisecategory/?format=json`
   → 8 catégories retournées en direct) ; dépôt :
   https://github.com/wger-project/wger
+
+**Backend**
+
+- https://supabase.com/docs (Auth, Postgres, Row Level Security, Edge
+  Functions, package Flutter `supabase_flutter`)
