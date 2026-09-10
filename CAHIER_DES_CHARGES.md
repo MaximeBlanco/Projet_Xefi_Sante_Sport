@@ -15,8 +15,11 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 - **La contrainte imposée de base : intégrer une API externe tierce**, sur
   le principe d'une app de stats League of Legends qui consomme l'API Riot
   Games — une vraie fonctionnalité doit s'appuyer sur un service tiers
-  plutôt que tout recalculer nous-mêmes. Choix retenu : **Calories Burned
-  API (api-ninjas.com)** — voir section 4.
+  plutôt que tout recalculer nous-mêmes. Deux retenues, chacune sur un
+  rôle différent — voir section 4 :
+  - **wger.de** — catalogue de sports/exercices (gratuite, sans clé).
+  - **Calories Burned API (api-ninjas.com)** — calcul des calories brûlées
+    par séance (clé gratuite requise).
 - Notre propre API (backend Laravel, section 4) n'est pas cette contrainte
   imposée : c'est un choix d'architecture qu'on fait nous-mêmes, nécessaire
   pour que les comptes, classements et contacts fonctionnent entre
@@ -59,8 +62,15 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 
 ### Lot A — Suivi & profil individuel
 
-- CRUD des sports disponibles (liste prédéfinie + éventuel ajout libre).
+- Catalogue de sports peuplé depuis **wger.de** plutôt qu'écrit à la main
+  (voir section 4 pour le mécanisme de synchronisation) + éventuel ajout
+  libre par un utilisateur.
 - Écran de saisie d'une séance (formulaire rapide, optimisé mobile).
+- **Suivi GPS pour les sports outdoor** (course à pied, vélo, marche —
+  déterminé par `Sport.isGpsTrackable`) : carte en direct qui trace le
+  parcours pendant la séance, distance, vitesse instantanée et dénivelé
+  calculés à la volée. À la fin de la séance, le tracé, la distance et le
+  dénivelé sont envoyés au backend avec la séance (voir section 5 et 6).
 - Intégration de la Calories Burned API : à l'enregistrement d'une séance,
   le backend appelle l'API externe (activité + poids de l'utilisateur +
   durée) et stocke le nombre de calories brûlées retourné.
@@ -118,8 +128,10 @@ repo/
     │   ├── Http/Requests/           # validation des entrées (Form Requests)
     │   ├── Http/Resources/          # formatage JSON des réponses
     │   ├── Models/                  # User, Team, Sport, Session
-    │   └── Services/CaloriesBurnedService.php   # appel à l'API externe
+    │   ├── Services/CaloriesBurnedService.php   # appel à la Calories Burned API
+    │   └── Services/WgerCatalogService.php      # appel à wger.de
     ├── routes/api.php
+    ├── app/Console/Commands/SyncSportsFromWger.php   # commande artisan de sync
     ├── database/migrations/
     └── tests/
 ```
@@ -146,11 +158,27 @@ repo/
   code métier).
 - **Auth : Laravel Sanctum** (tokens d'API, l'approche standard Laravel pour
   une API consommée par une app mobile — équivalent JWT mais intégré nativement).
-- **API externe (calories) :** `CaloriesBurnedService` côté Laravel appelle
-  `https://api.api-ninjas.com/v1/caloriesburned` avec la clé API stockée en
-  `.env` (`CALORIES_API_KEY`), **jamais exposée côté Flutter**. Le mobile ne
-  parle qu'à notre propre API, qui fait elle-même le relais vers le service
-  externe — voir contrat d'API section 6.
+- **API externe #1 (calories) :** `CaloriesBurnedService` côté Laravel
+  appelle `https://api.api-ninjas.com/v1/caloriesburned` avec la clé API
+  stockée en `.env` (`CALORIES_API_KEY`), **jamais exposée côté Flutter**.
+  Le mobile ne parle qu'à notre propre API, qui fait elle-même le relais
+  vers le service externe — voir contrat d'API section 6.
+- **API externe #2 (catalogue de sports) :** `WgerCatalogService` appelle
+  `https://wger.de/api/v2/exercisecategory/` et `/exercise/` (endpoints
+  publics, **sans clé**) pour peupler la table `Sport` locale. Ce n'est
+  **pas** un appel en direct à chaque écran — la commande artisan
+  `sports:sync-from-wger` importe/actualise les données une fois (au setup,
+  puis relançable), et l'app consomme ensuite notre propre `/api/sports`
+  comme n'importe quelle autre ressource. Ça évite de dépendre de la
+  disponibilité de wger.de à chaque ouverture de l'app, et ça nous laisse
+  ajouter nos propres champs (`emoji`, `pointsPerUnit`) que wger n'a pas.
+- **Suivi GPS :** `geolocator` pour le flux de position, `flutter_map` +
+  `latlong2` pour la carte, avec des tuiles **OpenStreetMap** — gratuites et
+  sans clé API, contrairement à Google Maps qui demande une facturation
+  activée dès le premier appel. Distance (formule de Haversine entre points
+  consécutifs) et dénivelé (somme des montées) calculés côté Flutter pendant
+  l'enregistrement, puis envoyés au backend à la fin de la séance — pas de
+  recalcul serveur du tracé brut.
 - Pas de dépendance native lourde côté Flutter sans raison forte (ex: évitez
   tout package qui tire `path_provider`/JNI si un équivalent HTTP simple
   existe — source de plantages Gradle constatée sur ce projet).
@@ -181,20 +209,25 @@ Contact
   createdAt       DateTime
 
 Sport
-  id            String (uuid)
-  name          String
-  emoji         String
-  pointsPerUnit Int         # points attribués par séance ou par tranche de temps
+  id              String (uuid)
+  name            String
+  emoji           String
+  pointsPerUnit   Int         # points attribués par séance ou par tranche de temps
+  wgerId          Int (nullable)   # id d'origine côté wger.de, pour re-synchroniser
+  isGpsTrackable  Bool        # true pour course à pied, vélo, marche...
 
 Session
-  id              String (uuid)
-  userId          String (FK User)
-  sportId         String (FK Sport)
-  date            DateTime
-  durationMin     Int
-  points          Int          # calculé côté serveur à l'enregistrement
-  caloriesBurned  Float        # rempli via l'appel à la Calories Burned API
-  createdAt       DateTime
+  id                String (uuid)
+  userId            String (FK User)
+  sportId           String (FK Sport)
+  date              DateTime
+  durationMin       Int
+  points            Int            # calculé côté serveur à l'enregistrement
+  caloriesBurned    Float          # rempli via l'appel à la Calories Burned API
+  distanceKm        Float (nullable)      # uniquement si Sport.isGpsTrackable
+  elevationGainM    Float (nullable)      # dénivelé positif cumulé
+  route             Json (nullable)       # [{lat, lng, altitude, timestampMs}, ...]
+  createdAt         DateTime
 ```
 
 **Barème de points (V1, simple) :** `points = durationMin` (1 minute = 1
@@ -219,7 +252,7 @@ Toutes les routes sous `/api`. Réponses en JSON. Erreurs au format
 | DELETE  | `/contacts/:id`               | oui  | Supprime un contact ou annule/refuse une demande |
 | GET     | `/sports`                     | non  | Liste des sports disponibles                  |
 | GET     | `/sessions?userId=`           | oui  | Historique de séances (soi-même par défaut)   |
-| POST    | `/sessions`                   | oui  | Enregistre une séance `{sportId, date, durationMin}` → appelle en interne la Calories Burned API et renvoie la séance avec `caloriesBurned` rempli |
+| POST    | `/sessions`                   | oui  | Enregistre une séance `{sportId, date, durationMin, distanceKm?, elevationGainM?, route?}` → appelle en interne la Calories Burned API et renvoie la séance avec `caloriesBurned` rempli (`distanceKm`/`elevationGainM`/`route` uniquement pour un sport GPS-trackable) |
 | GET     | `/rankings/global`            | non  | Classement individuel toutes activités confondues |
 | GET     | `/rankings/sport/:sportId`    | non  | Classement individuel pour un sport donné     |
 | GET     | `/rankings/teams`             | non  | Classement par équipe                         |
@@ -370,3 +403,7 @@ Couleurs et typographies extraites directement du site officiel xefi.fr
 
 - https://api-ninjas.com/api/caloriesburned (Calories Burned API — clé
   gratuite sans carte bancaire, endpoint `GET /v1/caloriesburned`)
+- https://wger.de/api/v2/ (wger — open source, endpoints publics testés
+  sans clé le 2026-09-10, ex. `GET /api/v2/exercisecategory/?format=json`
+  → 8 catégories retournées en direct) ; dépôt :
+  https://github.com/wger-project/wger
