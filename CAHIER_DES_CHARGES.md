@@ -147,6 +147,29 @@ repo/
   requêtes Postgres (CRUD direct sur les tables avec son query builder,
   filtré par Row Level Security), et Realtime pour que les classements se
   mettent à jour en direct sans qu'on ait à coder du polling.
+
+**Dépendances déjà présentes dans `pubspec.yaml`** (socle commun, ne pas
+les re-proposer/dupliquer dans une autre PR) :
+
+| Package             | Version   | Rôle                                             |
+|----------------------|-----------|---------------------------------------------------|
+| `flutter_riverpod`   | `^2.6.1`  | State management                                   |
+| `supabase_flutter`   | `^2.17.2` | Auth, Postgres (CRUD + RLS), Realtime               |
+| `google_fonts`       | `^8.2.1`  | Police Montserrat (voir section 8) sans embarquer de fichiers `.ttf` |
+| `http`               | `^1.2.2`  | Utilisé par `tool/sync_sports_from_wger.dart` (script ponctuel, pas encore écrit) |
+| `intl`               | `^0.19.0` | Formatage dates/nombres dans l'UI                   |
+
+**Dépendances à ajouter par le Lot A quand le suivi GPS sera implémenté**
+(pas encore dans `pubspec.yaml`, ne pas les ajouter avant d'attaquer cette
+fonctionnalité pour éviter les conflits de PR) : `geolocator`, `flutter_map`,
+`latlong2` — voir plus bas dans cette section pour leur rôle.
+
+**SDK Flutter vérifié pour ce projet :** Flutter `3.47.3` (stable), revision
+`e8113bf456` — c'est la version enregistrée dans `.metadata` à la création du
+projet et celle sur laquelle `flutter pub get` / `flutter analyze` /
+`flutter test` ont été validés sans erreur sur le socle commun. Pas besoin
+d'être sur exactement cette version, mais reste sur une version stable
+récente pour éviter les divergences de lints.
 - **Base de données : Postgres géré par Supabase.** Le schéma (section 5)
   est défini en SQL dans `supabase/migrations/`, avec **Row Level Security
   activée sur chaque table** — chacun ne peut modifier que ses propres
