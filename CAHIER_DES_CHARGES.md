@@ -45,8 +45,11 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 ### Socle commun (V1, obligatoire)
 
 - Création de compte / connexion (email + mot de passe, JWT).
-- Choix d'une équipe à l'inscription (liste d'équipes existantes, ou création
-  si aucune ne convient).
+- Rejoindre une équipe est **optionnel** (l'app est utilisable sans jamais
+  en rejoindre une — voir "Contacts" ci-dessous pour l'alternative).
+- Ajout de collègues en **contacts** : recherche par nom/email, envoi d'une
+  demande, acceptation par l'autre. Relation neutre entre professionnels
+  ("contact"), pas un système "ami" façon réseau social.
 - Enregistrement d'une séance de sport : sport pratiqué, durée ou nombre de
   séances, date.
 - Historique personnel des séances.
@@ -64,13 +67,20 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
   cumulées, séries (streaks), répartition par sport (graphique simple).
 - Gestion du compte (inscription, connexion, déconnexion, édition profil —
   le poids de l'utilisateur est requis pour le calcul de calories).
+- Écran "Contacts" : rechercher un collègue, envoyer/accepter une demande,
+  lister ses contacts, en retirer un.
 
 ### Lot B — Classements & compétition
 
 - Classement individuel **par sport** (ex: top coureurs, top nageurs...).
 - Classement individuel **global** (tous sports confondus, somme des points).
-- Classement **par équipe** (somme des points de tous les membres).
-- Écran "Classements" avec onglets (Global / Par sport / Équipes).
+- Classement **par équipe**, uniquement pour les utilisateurs qui en ont
+  rejoint une (n'apparaît pas comme un onglet obligatoire pour tout le monde).
+- Classement **parmi mes contacts** : mêmes points/périodes, mais filtré
+  aux seuls contacts acceptés de l'utilisateur — l'alternative à l'équipe
+  pour quelqu'un qui n'en a pas rejoint.
+- Écran "Classements" avec onglets (Global / Par sport / Mes contacts /
+  Équipes — ce dernier caché si l'utilisateur n'a pas d'équipe).
 - Mise en avant du rang de l'utilisateur connecté (ex: "Tu es 4e sur 32").
 
 > Cette séparation en deux lots est une proposition de base pour répartir le
@@ -162,6 +172,13 @@ Team
   colorValue    Int         # couleur d'équipe, cohérente avec la charte
   createdAt     DateTime
 
+Contact
+  id              String (uuid)
+  requesterId     String (FK User)
+  addresseeId     String (FK User)
+  status          Enum(pending, accepted)   # pas de "declined" stocké, on delete la ligne
+  createdAt       DateTime
+
 Sport
   id            String (uuid)
   name          String
@@ -195,12 +212,17 @@ Toutes les routes sous `/api`. Réponses en JSON. Erreurs au format
 | GET     | `/me`                         | oui  | Profil de l'utilisateur connecté              |
 | GET     | `/teams`                      | non  | Liste des équipes                             |
 | POST    | `/teams`                      | oui  | Crée une équipe `{name, colorValue}`          |
+| GET     | `/contacts`                   | oui  | Liste des contacts (acceptés + demandes en attente) |
+| POST    | `/contacts`                   | oui  | Envoie une demande `{addresseeId}`            |
+| PATCH   | `/contacts/:id/accept`        | oui  | Accepte une demande reçue                     |
+| DELETE  | `/contacts/:id`               | oui  | Supprime un contact ou annule/refuse une demande |
 | GET     | `/sports`                     | non  | Liste des sports disponibles                  |
 | GET     | `/sessions?userId=`           | oui  | Historique de séances (soi-même par défaut)   |
 | POST    | `/sessions`                   | oui  | Enregistre une séance `{sportId, date, durationMin}` → appelle en interne la Calories Burned API et renvoie la séance avec `caloriesBurned` rempli |
 | GET     | `/rankings/global`            | non  | Classement individuel toutes activités confondues |
 | GET     | `/rankings/sport/:sportId`    | non  | Classement individuel pour un sport donné     |
 | GET     | `/rankings/teams`             | non  | Classement par équipe                         |
+| GET     | `/rankings/contacts`          | oui  | Classement parmi les contacts acceptés de l'utilisateur connecté |
 
 `POST /sessions` est la seule route qui touche l'API externe : le Flutter
 n'appelle jamais `api.api-ninjas.com` directement, tout passe par notre
