@@ -1,38 +1,29 @@
 # XEFI Sport
 
-App Flutter de suivi sportif compétitif pour les collaborateurs XEFI. Voir
+App Flutter de suivi sportif **personnel** — un seul utilisateur, toutes
+les données sur le téléphone, aucun serveur. Voir
 [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) pour la vision, l'architecture
 et les conventions du projet.
 
 ## Lancer le projet
-
-Aucune installation ni compte à créer : l'app pointe par défaut sur le
-projet Supabase partagé de l'équipe (cloud, pas de Docker).
 
 ```
 flutter pub get
 flutter run
 ```
 
-## Base de données
+Fonctionne sans rien configurer. Les calories brûlées ne s'affichent pas
+tant qu'aucune clé Calories Burned API n'est fournie (voir ci-dessous) —
+tout le reste marche déjà.
 
-Le schéma partagé est déjà appliqué sur le projet Supabase de l'équipe. Le
-SQL qui fait foi vit dans `supabase/migrations/` + `supabase/seed.sql` — si
-tu dois le réappliquer (nouveau projet Supabase, reset), colle le contenu
-de ces fichiers dans le **SQL Editor** du dashboard Supabase et exécute.
+## Calories brûlées (optionnel)
 
-## Développer hors-ligne (optionnel)
+1. Crée une clé gratuite sur https://api-ninjas.com (pas de carte requise).
+2. Lance l'app avec :
 
-Si tu veux tester des migrations sans toucher au projet partagé, tu peux
-faire tourner un Supabase local avec sa CLI (nécessite Docker) :
-
-```
-supabase start
-flutter run --dart-define=SUPABASE_URL=http://10.0.2.2:54321 --dart-define=SUPABASE_ANON_KEY=<clé affichée par "supabase start">
-```
-
-Ou copie `dart_define.example.json` en `dart_define.json` (ignoré par git)
-pour éviter de retaper les identifiants à chaque lancement.
+   ```
+   flutter run --dart-define=CALORIES_API_KEY=ta_clé
+   ```
 
 ## Qualité
 

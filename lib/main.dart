@@ -1,25 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'app.dart';
-import 'core/config/env.dart';
+import 'data/session_repository.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('fr_FR', null);
+  await Hive.initFlutter();
 
-  if (!Env.isConfigured) {
-    throw StateError(
-      'SUPABASE_URL et SUPABASE_ANON_KEY sont requis. '
-      'Lance l\'app avec --dart-define-from-file=dart_define.json '
-      '(voir dart_define.example.json).',
-    );
-  }
+  final repository = SessionRepository();
+  await repository.init();
 
-  await Supabase.initialize(
-    url: Env.supabaseUrl,
-    publishableKey: Env.supabaseAnonKey,
-  );
-
-  runApp(const ProviderScope(child: XefiSportApp()));
+  runApp(XefiSportApp(repository: repository));
 }

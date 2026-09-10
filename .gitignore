@@ -46,10 +46,3 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
-
-# Node/API server related
-server/node_modules/
-server/data/
-
-# Local Supabase credentials (never commit real keys)
-dart_define.json

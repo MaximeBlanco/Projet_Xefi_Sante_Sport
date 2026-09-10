@@ -1,19 +1,21 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
 
-import 'package:monapp/screens/auth/login_screen.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hive/hive.dart';
+
+import 'package:monapp/app.dart';
+import 'package:monapp/data/session_repository.dart';
 
 void main() {
-  testWidgets('LoginScreen shows the login form', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(home: LoginScreen()),
-      ),
-    );
+  testWidgets('Shows the empty state when there are no sessions',
+      (WidgetTester tester) async {
+    Hive.init(Directory.systemTemp.createTempSync('hive_test').path);
+    final repository = SessionRepository();
+    await repository.init();
 
-    expect(find.text('Connexion'), findsOneWidget);
-    expect(find.widgetWithText(ElevatedButton, 'Se connecter'), findsOneWidget);
-    expect(find.text('Créer un compte'), findsOneWidget);
+    await tester.pumpWidget(XefiSportApp(repository: repository));
+
+    expect(find.text('Mes séances'), findsOneWidget);
+    expect(find.text('Aucune séance pour l\'instant'), findsOneWidget);
   });
 }
