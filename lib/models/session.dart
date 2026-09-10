@@ -1,5 +1,3 @@
-import 'gps_point.dart';
-
 class Session {
   const Session({
     required this.id,
@@ -10,9 +8,6 @@ class Session {
     required this.points,
     required this.caloriesBurned,
     required this.createdAt,
-    this.distanceKm,
-    this.elevationGainM,
-    this.route,
   });
 
   factory Session.fromJson(Map<String, dynamic> json) {
@@ -24,11 +19,6 @@ class Session {
       durationMin: json['duration_min'] as int,
       points: json['points'] as int,
       caloriesBurned: (json['calories_burned'] as num).toDouble(),
-      distanceKm: (json['distance_km'] as num?)?.toDouble(),
-      elevationGainM: (json['elevation_gain_m'] as num?)?.toDouble(),
-      route: (json['route'] as List<dynamic>?)
-          ?.map((point) => GpsPoint.fromJson(point as Map<String, dynamic>))
-          .toList(),
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -40,8 +30,5 @@ class Session {
   final int durationMin;
   final int points;
   final double caloriesBurned;
-  final double? distanceKm;
-  final double? elevationGainM;
-  final List<GpsPoint>? route;
   final DateTime createdAt;
 }

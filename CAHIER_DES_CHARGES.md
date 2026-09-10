@@ -10,6 +10,12 @@ de Claude Code.** Toute idée qui dépasse ce cadre va en section 5
 
 Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 
+Ce document est la version **active**, celle à suivre pour coder. La
+version plus ambitieuse explorée avant ce recadrage (équipes, contacts,
+GPS, catalogue wger.de, classements multiples) reste archivée dans
+[CAHIER_DES_CHARGES_COMPLET.md](CAHIER_DES_CHARGES_COMPLET.md) pour
+repartir de là une fois la V1 finie — ne pas coder dessus avant.
+
 ## 2. Contraintes obligatoires
 
 - **Contrainte imposée : intégrer une API externe tierce**, sur le principe

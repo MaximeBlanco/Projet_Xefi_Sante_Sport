@@ -16,8 +16,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
 
   static const _tabs = [
     ComingSoonTab(label: 'Mes séances'),
-    ComingSoonTab(label: 'Classements'),
-    ComingSoonTab(label: 'Contacts'),
+    ComingSoonTab(label: 'Classement'),
   ];
 
   @override
@@ -44,11 +43,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.leaderboard),
-            label: 'Classements',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Contacts',
+            label: 'Classement',
           ),
         ],
       ),

@@ -36,8 +36,9 @@ supabase link --project-ref <ton-project-ref>
 supabase db push
 ```
 
-Puis exécute `supabase/seed/sports_from_wger.sql` (SQL editor du dashboard
-Supabase, ou `supabase db execute`) pour avoir des sports à sélectionner.
+Puis exécute `supabase/seed.sql` (SQL editor du dashboard Supabase, ou
+`supabase db execute -f supabase/seed.sql`) pour avoir la liste de sports
+fixe du V1 à sélectionner.
 
 ## Qualité
 
