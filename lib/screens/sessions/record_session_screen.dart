@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/domain/session_duration.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/sport.dart';
 import '../../providers/record_session_controller.dart';
@@ -20,16 +21,32 @@ class RecordSessionScreen extends ConsumerStatefulWidget {
 }
 
 class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
-  static const _maximumDurationMin = 1440;
   static const _selectableYearsInThePast = 1;
 
   final _formKey = GlobalKey<FormState>();
+  final _durationFieldKey = GlobalKey<FormFieldState<String>>();
   final _durationController = TextEditingController();
   final _dateFormat = DateFormat('dd/MM/yyyy');
 
   Sport? _selectedSport;
+  DurationUnit _durationUnit = DurationUnit.minutes;
   DateTime _selectedDate = DateUtils.dateOnly(DateTime.now());
   String? _errorMessage;
+
+  int? get _durationMin =>
+      SessionDuration.parseToMinutes(_durationController.text, _durationUnit);
+
+  void _changeDurationUnit(DurationUnit unit) {
+    if (unit == _durationUnit) return;
+    setState(() => _durationUnit = unit);
+    // The same digits mean something else now, so any message already on the
+    // field is about a value the user is no longer entering. Only this field
+    // is revalidated: a form-wide pass would also flag a sport not yet chosen,
+    // and an empty field is not a mistake until the user submits.
+    if (_durationController.text.trim().isNotEmpty) {
+      _durationFieldKey.currentState?.validate();
+    }
+  }
 
   @override
   void dispose() {
@@ -62,7 +79,12 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
 
   Future<void> _submit() async {
     final selectedSport = _selectedSport;
-    if (!_formKey.currentState!.validate() || selectedSport == null) return;
+    final durationMin = _durationMin;
+    if (!_formKey.currentState!.validate() ||
+        selectedSport == null ||
+        durationMin == null) {
+      return;
+    }
 
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -72,7 +94,7 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
         await ref.read(recordSessionControllerProvider.notifier).submit(
               sport: selectedSport,
               date: _selectedDate,
-              durationMin: int.parse(_durationController.text.trim()),
+              durationMin: durationMin,
             );
 
     if (!mounted) return;
@@ -109,18 +131,15 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
     return "L'enregistrement de la séance a échoué, réessayez.";
   }
 
-  String? _validateDuration(String? value) {
-    final durationMin = int.tryParse((value ?? '').trim());
-    if (durationMin == null) {
-      return 'Indiquez une durée en minutes';
-    }
-    if (durationMin <= 0) {
-      return 'La durée doit être supérieure à 0';
-    }
-    if (durationMin > _maximumDurationMin) {
-      return 'La durée ne peut pas dépasser $_maximumDurationMin minutes';
-    }
-    return null;
+  String? _validateDuration(String? value) =>
+      SessionDuration.validationMessage(value, _durationUnit);
+
+  /// Points equal the duration in minutes, so showing the conversion tells the
+  /// user what they are about to score before they commit to it.
+  String? get _durationHelperText {
+    final durationMin = _durationMin;
+    if (durationMin == null || durationMin <= 0) return null;
+    return '${SessionDuration.describeMinutes(durationMin)} · $durationMin pts';
   }
 
   Sport? _matchingSportInCatalogue(List<Sport> sports) {
@@ -182,15 +201,40 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                       sport == null ? 'Choisissez un sport' : null,
                 ),
                 const SizedBox(height: 16),
+                SegmentedButton<DurationUnit>(
+                  segments: [
+                    for (final unit in DurationUnit.values)
+                      ButtonSegment<DurationUnit>(
+                        value: unit,
+                        label: Text(unit.label),
+                      ),
+                  ],
+                  selected: {_durationUnit},
+                  onSelectionChanged: isSubmitting
+                      ? null
+                      : (selection) => _changeDurationUnit(selection.first),
+                ),
+                const SizedBox(height: 12),
                 TextFormField(
+                  key: _durationFieldKey,
                   controller: _durationController,
                   enabled: !isSubmitting,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'Durée',
-                    suffixText: 'min',
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  keyboardType: TextInputType.numberWithOptions(
+                    decimal: _durationUnit == DurationUnit.hours,
                   ),
+                  inputFormatters: [
+                    if (_durationUnit == DurationUnit.hours)
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
+                    else
+                      FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Durée',
+                    suffixText: _durationUnit.fieldSuffix,
+                    helperText: _durationHelperText,
+                  ),
+                  onChanged: (_) => setState(() {}),
                   validator: _validateDuration,
                 ),
                 const SizedBox(height: 16),
