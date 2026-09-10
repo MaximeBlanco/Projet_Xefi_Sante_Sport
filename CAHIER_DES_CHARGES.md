@@ -12,17 +12,18 @@ Nom de travail : **XEFI Sport** (à confirmer/changer librement).
 
 ## 2. Contraintes obligatoires
 
-- **Une API REST est obligatoire.** Aucune persistance uniquement locale
-  (pas de "tout en Hive/SQLite embarqué sans backend"). Le stockage central
-  (base de données côté serveur) est la source de vérité ; le mobile
-  consomme l'API en HTTP/JSON.
-- **Une API externe tierce est obligatoire en plus de notre propre API**,
-  sur le même principe qu'une app de stats League of Legends qui consomme
-  l'API Riot Games : notre backend reste la source de vérité pour nos
-  données (users, teams, sessions, rankings), mais une fonctionnalité doit
-  enrichir ces données via un service tiers plutôt que tout recalculer
-  nous-mêmes. Choix retenu : **Calories Burned API (api-ninjas.com)** — voir
-  section 4.
+- **La contrainte imposée de base : intégrer une API externe tierce**, sur
+  le principe d'une app de stats League of Legends qui consomme l'API Riot
+  Games — une vraie fonctionnalité doit s'appuyer sur un service tiers
+  plutôt que tout recalculer nous-mêmes. Choix retenu : **Calories Burned
+  API (api-ninjas.com)** — voir section 4.
+- Notre propre API (backend Laravel, section 4) n'est pas cette contrainte
+  imposée : c'est un choix d'architecture qu'on fait nous-mêmes, nécessaire
+  pour que les comptes, classements et contacts fonctionnent entre
+  plusieurs utilisateurs (ça ne peut pas tenir en local sur chaque
+  téléphone). Aucune persistance uniquement locale (pas de "tout en
+  Hive/SQLite embarqué sans backend") : le stockage central est la source
+  de vérité, le mobile consomme l'API en HTTP/JSON.
 - Cible principale : **Android** (testé sur émulateur), l'app doit rester
   compatible iOS sans usage d'API spécifique à une plateforme.
 - Respect strict de l'identité visuelle XEFI (section 8).
