@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import 'sign_up_screen.dart';
 
@@ -40,7 +41,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             password: _passwordController.text,
           );
     } on AuthException catch (error) {
-      setState(() => _errorMessage = error.message);
+      if (mounted) setState(() => _errorMessage = error.message);
+    } catch (error) {
+      // gotrue only wraps what it recognises: a timeout, a malformed 2xx body or a
+      // failure in the session listener escapes as something else, and without this
+      // the button would just stop spinning with no message at all.
+      if (mounted) {
+        setState(() => _errorMessage = 'La connexion a échoué, réessayez.');
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -89,7 +97,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 16),
                     Text(
                       _errorMessage!,
-                      style: const TextStyle(color: Colors.red),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -102,7 +112,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: AppColors.white,
                             ),
                           )
                         : const Text('Se connecter'),
