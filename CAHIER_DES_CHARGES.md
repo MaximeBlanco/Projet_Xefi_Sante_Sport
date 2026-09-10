@@ -129,9 +129,9 @@ repo/
     │   ├── Http/Resources/          # formatage JSON des réponses
     │   ├── Models/                  # User, Team, Sport, Session
     │   ├── Services/CaloriesBurnedService.php   # appel à la Calories Burned API
-    │   └── Services/WgerCatalogService.php      # appel à wger.de
+    │   ├── Services/WgerCatalogService.php      # appel à wger.de
+    │   └── Console/Commands/SyncSportsFromWger.php   # commande artisan de sync
     ├── routes/api.php
-    ├── app/Console/Commands/SyncSportsFromWger.php   # commande artisan de sync
     ├── database/migrations/
     └── tests/
 ```
@@ -251,6 +251,7 @@ Toutes les routes sous `/api`. Réponses en JSON. Erreurs au format
 | PATCH   | `/contacts/:id/accept`        | oui  | Accepte une demande reçue                     |
 | DELETE  | `/contacts/:id`               | oui  | Supprime un contact ou annule/refuse une demande |
 | GET     | `/sports`                     | non  | Liste des sports disponibles                  |
+| POST    | `/sports`                     | oui  | Ajoute un sport libre `{name, emoji, isGpsTrackable}` (hors catalogue wger.de) |
 | GET     | `/sessions?userId=`           | oui  | Historique de séances (soi-même par défaut)   |
 | POST    | `/sessions`                   | oui  | Enregistre une séance `{sportId, date, durationMin, distanceKm?, elevationGainM?, route?}` → appelle en interne la Calories Burned API et renvoie la séance avec `caloriesBurned` rempli (`distanceKm`/`elevationGainM`/`route` uniquement pour un sport GPS-trackable) |
 | GET     | `/rankings/global`            | non  | Classement individuel toutes activités confondues |
@@ -364,10 +365,14 @@ Couleurs et typographies extraites directement du site officiel xefi.fr
 
 ## 10. Definition of Done (V1)
 
-- [ ] Un utilisateur peut créer un compte, se connecter, choisir une équipe.
-- [ ] Un utilisateur peut enregistrer une séance de sport.
-- [ ] Le classement individuel global, par sport, et par équipe s'affichent
-      et se mettent à jour après une nouvelle séance.
+- [ ] Un utilisateur peut créer un compte, se connecter, et éventuellement
+      rejoindre une équipe ou ajouter des contacts (aucun des deux n'est
+      obligatoire pour utiliser l'app).
+- [ ] Un utilisateur peut enregistrer une séance de sport (avec suivi GPS
+      pour un sport outdoor).
+- [ ] Les classements individuel global, par sport, et parmi mes contacts
+      s'affichent et se mettent à jour après une nouvelle séance ; le
+      classement par équipe fonctionne pour un utilisateur qui en a une.
 - [ ] L'app respecte la charte XEFI (couleurs, police, logo).
 - [ ] `flutter analyze` et `flutter test` passent sans erreur.
 - [ ] L'app tourne sur l'émulateur Android sans crash sur le parcours
