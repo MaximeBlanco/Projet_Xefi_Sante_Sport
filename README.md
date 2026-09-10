@@ -85,6 +85,50 @@ affiche un tiret plutôt qu'un faux `0`. Les points (= durée en minutes) et le
 classement ne dépendent pas de l'API. Le poids saisi à l'inscription sert au
 calcul : un profil sans poids ne déclenche pas l'appel.
 
+## Développement 100 % local (sans compte Supabase)
+
+Alternative au projet cloud : la CLI Supabase monte toute la stack en
+conteneurs Docker sur ta machine. Même schéma, mêmes migrations, aucun compte
+à créer. Il faut Docker Desktop démarré.
+
+```
+npx supabase@latest start
+```
+
+Les migrations de `supabase/migrations/` s'appliquent automatiquement, donc les
+10 sports sont là dès le premier démarrage. La commande affiche à la fin
+`API_URL` et `PUBLISHABLE_KEY` : reporte-les dans `dart_define.json`, mais
+**avec l'hôte `10.0.2.2` au lieu de `127.0.0.1`** — c'est l'alias par lequel
+l'émulateur Android joint la machine hôte :
+
+```json
+{
+  "SUPABASE_URL": "http://10.0.2.2:54321",
+  "SUPABASE_ANON_KEY": "<PUBLISHABLE_KEY affichee par supabase start>"
+}
+```
+
+La stack locale sert aussi l'Edge Function. Pour avoir de vraies calories,
+mets ta clé api-ninjas dans `supabase/functions/.env` (fichier ignoré par git)
+puis redémarre :
+
+```
+CALORIES_API_KEY=<ta-cle>
+```
+
+Sans cette clé la fonction répond « not configured », les séances sont
+enregistrées avec des calories nulles et l'historique affiche un tiret : rien
+d'autre n'est bloqué.
+
+Commandes utiles : `npx supabase status` (URL et clés), `npx supabase stop`
+(arrêt, les données sont conservées), `npx supabase db reset` (rejoue les
+migrations sur une base vide). Le Studio est sur http://127.0.0.1:54323.
+
+À savoir : la stack locale parle en HTTP simple, qu'Android bloque depuis
+l'API 28. `android/app/src/debug/res/xml/network_security_config.xml` lève
+l'interdiction pour les seuls hôtes de loopback, et uniquement en build debug —
+la release reste sans cleartext.
+
 ## Auth en développement
 
 Supabase demande une confirmation d'email par défaut : juste après une
