@@ -1,0 +1,13 @@
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local
+
+# Local Edge Function secrets (CALORIES_API_KEY). The CLI reads this file on
+# `supabase start`; it must never reach the repository.
+.env
+functions/.env

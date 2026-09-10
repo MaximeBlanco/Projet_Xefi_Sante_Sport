@@ -1,0 +1,140 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../core/localization/app_locale.dart';
+import '../core/theme/app_colors.dart';
+import '../models/session.dart';
+
+const String _unknownSportEmoji = '🏅';
+const String _unknownSportName = 'Sport inconnu';
+const String _missingValuePlaceholder = '—';
+
+/// [DateFormat] throws when the French locale data has not been loaded by the
+/// app entry point, so the tile degrades to a numeric date instead of failing.
+DateFormat _buildSessionDateFormat() {
+  try {
+    return DateFormat('dd MMMM yyyy', AppLocale.french);
+  } on Exception {
+    return DateFormat('dd/MM/yyyy');
+  }
+}
+
+final DateFormat _sessionDateFormat = _buildSessionDateFormat();
+
+class SessionTile extends StatelessWidget {
+  const SessionTile({super.key, required this.session});
+
+  final Session session;
+
+  String get _caloriesLabel {
+    final caloriesBurned = session.caloriesBurned;
+    if (caloriesBurned == null) {
+      return '$_missingValuePlaceholder kcal';
+    }
+    return '${caloriesBurned.round()} kcal';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final sport = session.sport;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              sport?.emoji ?? _unknownSportEmoji,
+              style: textTheme.headlineSmall,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    sport?.name ?? _unknownSportName,
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _sessionDateFormat.format(session.date),
+                    style: textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 4,
+                    children: [
+                      _SessionMetric(
+                        icon: Icons.schedule,
+                        label: '${session.durationMin} min',
+                      ),
+                      _SessionMetric(
+                        icon: Icons.local_fire_department_outlined,
+                        label: _caloriesLabel,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            _PointsBadge(points: session.points),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionMetric extends StatelessWidget {
+  const _SessionMetric({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: AppColors.secondaryText),
+        const SizedBox(width: 4),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    );
+  }
+}
+
+class _PointsBadge extends StatelessWidget {
+  const _PointsBadge({required this.points});
+
+  final int points;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: const ShapeDecoration(
+        color: AppColors.black,
+        shape: StadiumBorder(),
+      ),
+      child: Text(
+        '$points pts',
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: AppColors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}

@@ -1,138 +1,209 @@
-# Cahier des charges — App de suivi sportif personnel (XEFI)
+# Cahier des charges — App de suivi sportif compétitif (XEFI)
 
 ## 1. Vision
 
-Application mobile Flutter de suivi sportif **personnel** : un seul
-utilisateur, toutes ses données sur son téléphone, aucun serveur. On
-enregistre une séance de sport, on suit son trajet en direct (GPS) pour la
-course/vélo/marche, et l'app calcule les calories brûlées via une API
-externe.
+Application mobile Flutter permettant aux collaborateurs XEFI d'enregistrer
+leurs séances de sport et de se comparer via un classement. **Portée
+volontairement réduite : ce projet est fait à deux, en 2 jours, avec l'aide
+de Claude Code.** Toute idée qui dépasse ce cadre va en section 5
+(backlog) — elle n'est pas perdue, juste pas dans la version à livrer.
 
 Nom de travail : **XEFI Sport** (à confirmer/changer librement).
-
-**Pas de compte, pas de connexion, pas de comparaison entre utilisateurs,
-pas de backend.** Ce périmètre a changé plusieurs fois avant d'arriver ici —
-si une idée plus ambitieuse (classement, comptes, équipes) revient un jour,
-elle repart d'une nouvelle réflexion, pas d'un ajout sur cette base.
 
 ## 2. Contraintes obligatoires
 
 - **Contrainte imposée : intégrer une API externe tierce**, sur le principe
   d'une app de stats League of Legends qui consomme l'API Riot Games.
   Retenue : **Calories Burned API (api-ninjas.com)** — calcule les calories
-  brûlées à partir du sport pratiqué, du poids, et de la durée.
-- **Aucun backend, aucun compte.** Toutes les données (séances, poids)
-  restent stockées localement sur le téléphone (Hive). Pas de Supabase, pas
-  de serveur perso, pas d'auth.
-- Cible : **Android** (testé sur émulateur ou téléphone).
+  brûlées à l'enregistrement d'une séance. Voir section 3.
+- **Le projet est 100% Flutter côté code applicatif.** Pas de backend dans
+  un autre langage. Les données partagées (comptes, séances, classement)
+  vivent dans **Supabase** (Postgres + Auth + API REST auto-générée),
+  configuré en SQL plutôt qu'avec un serveur qu'on développe nous-mêmes.
+- Cible : **Android** (testé sur émulateur).
 - Respect de l'identité visuelle XEFI (section 6).
-- **Tout le code est en anglais** (fichiers, classes, variables, commits).
-  Seul le texte affiché à l'écran reste en français. Nommage explicite, pas
-  de commentaire qui décrit un "quoi" que le nom aurait pu porter.
+- **Tout le code est en anglais** (fichiers, classes, variables, tables/
+  colonnes SQL, commits). Seul le texte affiché à l'écran reste en
+  français. Nommage explicite, pas de commentaire qui décrit un "quoi" que
+  le nom aurait pu porter.
 
-## 3. Fonctionnalités
+## 3. Fonctionnalités — V1 (ce qui doit être fini)
 
-- Enregistrer une séance : choisir un sport dans une liste fixe, durée en
-  minutes (sports non-outdoor : natation, foot, yoga, muscu...).
-- **Suivi GPS en direct** pour les sports outdoor (course à pied, vélo,
-  marche) : carte qui trace le parcours pendant la séance, distance
-  calculée en direct (formule de Haversine), durée mesurée automatiquement.
-- À l'enregistrement (manuel ou GPS), appel à la Calories Burned API
-  (sport + poids + durée) → calories stockées avec la séance. Si aucune clé
-  API n'est configurée, la séance s'enregistre quand même, juste sans
-  calories (l'app ne doit jamais bloquer sur l'API externe).
-- Poids demandé une seule fois (au premier enregistrement), modifiable.
-- Historique des séances (liste, plus récentes en premier).
+Volontairement court. Chaque ligne doit pouvoir se coder en quelques heures.
 
-### Backlog (hors V1)
+- Création de compte / connexion (Supabase Auth, email + mot de passe).
+- Enregistrer une séance : choisir un sport dans une **liste fixe** (~10
+  sports codés en dur, pas de source externe pour ce V1), durée en minutes,
+  date.
+- À l'enregistrement, appel à la Calories Burned API (via une Supabase Edge
+  Function, voir section 4) avec `{activity, weightKg, durationMin}` →
+  calories brûlées stockées avec la séance.
+- Historique personnel des séances.
+- Système de points : `points = duration_min`.
+- **Un seul classement : global**, toutes activités et tous utilisateurs
+  confondus — écran qui liste les utilisateurs par points décroissants,
+  avec le rang de l'utilisateur connecté mis en avant.
 
-- Statistiques/graphiques sur la durée.
-- Édition/suppression d'une séance depuis l'historique.
-- Choix d'unité (kg/lb, km/mi).
-- Tout ce qui a été exploré puis abandonné (comptes, classements, équipes,
-  contacts, backend Supabase/Laravel, sync wger.de) reste dans
-  [CAHIER_DES_CHARGES_COMPLET.md](CAHIER_DES_CHARGES_COMPLET.md) — à ne
-  reprendre que si le projet évolue vers du multi-utilisateur.
+### Répartition à deux (pensée pour tourner en parallèle dès le jour 1)
+
+**Personne A — App côté utilisateur**
+- Écrans inscription / connexion.
+- Écran "Enregistrer une séance" (sport, durée, date) + appel à l'Edge
+  Function de calcul de calories.
+- Écran "Historique" (liste des séances passées).
+
+**Personne B — Backend & classement**
+- Schéma Supabase (migrations SQL : `profiles`, `sports` avec le seed fixe,
+  `sessions`, policies Row Level Security).
+- Edge Function `calculate-calories`.
+- Écran "Classement global".
+
+Le schéma de données (section 4) est le point de contact entre les deux :
+une fois posé (même vide de données), chacun code son écran contre ce
+schéma sans attendre l'autre.
 
 ## 4. Architecture technique
 
 ```
-lib/
-├── main.dart
-├── app.dart
-├── theme/app_theme.dart        # couleurs/police XEFI
-├── constants/sports.dart       # liste fixe de sports
-├── models/
-│   ├── sport_session.dart
-│   └── route_point.dart
-├── data/
-│   ├── session_repository.dart # stockage local (Hive)
-│   └── calories_api.dart       # appel à la Calories Burned API
-├── screens/
-│   ├── home_screen.dart
-│   ├── add_session_screen.dart
-│   ├── gps_tracking_screen.dart
-│   └── weight_prompt_dialog.dart
-└── widgets/session_card.dart
+repo/
+├── lib/
+│   ├── main.dart
+│   ├── app.dart
+│   ├── core/              # thème, constantes, client Supabase
+│   ├── models/            # User, Sport, Session
+│   ├── data/               # repositories (appels supabase_flutter)
+│   ├── providers/           # state management (Riverpod)
+│   ├── screens/              # un dossier par écran
+│   └── widgets/
+├── test/
+└── supabase/
+    ├── migrations/         # schéma SQL (tables, policies, vue de classement)
+    └── functions/
+        └── calculate-calories/   # Edge Function (Deno/TS)
 ```
 
 **Stack :**
 
-- **Flutter** (Dart), pas de state management externe — `StatefulWidget`
-  classique, l'app est assez petite pour ne pas en avoir besoin.
-- **Stockage local : Hive** (`hive` + `hive_flutter`) — un fichier sur le
-  téléphone, pas de serveur.
-- **GPS et carte :** `geolocator` (position) + `flutter_map` + `latlong2`
-  (carte), tuiles **OpenStreetMap** — gratuites, sans clé API (contrairement
-  à Google Maps qui demande une facturation activée).
-- **API externe :** appel direct depuis Flutter à
-  `api.api-ninjas.com/v1/caloriesburned` avec une clé gratuite (voir
-  `lib/data/calories_api.dart` — la clé se passe via
-  `--dart-define=CALORIES_API_KEY=...`, jamais commitée en dur). Sans clé
-  configurée, le calcul est simplement ignoré.
+- **Flutter** (Dart), state management **Riverpod**.
+- **Supabase** (`supabase_flutter`) : auth + CRUD direct sur les tables via
+  son query builder, filtré par Row Level Security.
+- **Base de données :** Postgres géré par Supabase, schéma versionné dans
+  `supabase/migrations/`.
+- **Auth :** Supabase Auth (email + mot de passe).
+- **Classement :** une vue SQL `rankings_global`
+  (`SELECT user_id, SUM(points) ... GROUP BY user_id ORDER BY ... DESC`),
+  exposée automatiquement en lecture par Supabase.
+- **API externe :** Edge Function `calculate-calories` (quelques lignes de
+  TypeScript/Deno) reçoit `{activity, weightKg, durationMin}`, appelle
+  `api.api-ninjas.com/v1/caloriesburned` avec la clé stockée en secret
+  Supabase (`CALORIES_API_KEY`, jamais dans le code Flutter), renvoie
+  `caloriesBurned`. Seul bout de code qui n'est pas du Dart.
 
-## 5. Definition of Done (V1)
+## 5. Modèle de données (V1)
 
-- [ ] On peut enregistrer une séance manuelle (sport + durée).
-- [ ] On peut démarrer un suivi GPS pour un sport outdoor, voir le tracé se
-      dessiner sur la carte en direct, puis l'arrêter et l'enregistrer.
-- [ ] La séance enregistrée affiche des calories brûlées (si une clé API
-      est configurée) sans jamais bloquer l'enregistrement si l'API échoue.
-- [ ] L'historique liste les séances passées.
+```
+profiles
+  id            uuid (PK, = auth.users.id)
+  name          text
+  weight_kg     numeric        # requis pour le calcul de calories
+  created_at    timestamptz
+
+sports
+  id                uuid (PK)
+  name              text
+  emoji             text
+  points_per_unit   integer     # = 1 pour tous en V1 (points = durée)
+
+sessions
+  id                uuid (PK)
+  user_id           uuid (FK profiles)
+  sport_id          uuid (FK sports)
+  date              date
+  duration_min      integer
+  points            integer
+  calories_burned   numeric
+  created_at        timestamptz
+```
+
+**Row Level Security :** chacun lit tout ce qui sert au classement
+(`sessions`, `profiles`), mais ne peut insérer/modifier que ses propres
+lignes (`user_id = auth.uid()`).
+
+## 6. Definition of Done (V1)
+
+- [ ] Un utilisateur peut créer un compte et se connecter.
+- [ ] Un utilisateur peut enregistrer une séance (sport de la liste fixe,
+      durée, date).
+- [ ] La séance enregistrée affiche des calories brûlées réelles (issues
+      de la Calories Burned API via l'Edge Function).
+- [ ] Le classement global s'affiche et se met à jour après une séance.
 - [ ] L'app respecte la charte XEFI (couleurs, police).
 - [ ] `flutter analyze` et `flutter test` passent sans erreur.
-- [ ] L'app tourne sur l'émulateur/téléphone Android sans crash sur le
-      parcours complet (ajout séance → historique).
+- [ ] L'app tourne sur l'émulateur Android sans crash sur le parcours
+      complet (inscription → séance → classement).
 
-## 6. Identité visuelle XEFI
+## 7. Backlog (hors V1 — à ne pas coder avant que tout ci-dessus fonctionne)
 
-Couleurs extraites du site officiel xefi.fr (inspection CSS, pas une
-estimation) :
+Ces idées restent bonnes, mais chacune dépasse à elle seule le temps
+disponible pour ce projet. Ne pas commencer avant que la V1 soit
+entièrement finie et fonctionnelle :
+
+- **Suivi GPS** (course/vélo) avec carte en direct, distance, dénivelé —
+  `geolocator` + `flutter_map`/OpenStreetMap. Un mini-projet à lui seul.
+- **Catalogue de sports depuis wger.de** (https://wger.de/api/v2/, gratuite
+  sans clé) plutôt qu'une liste fixe.
+- **Contacts** (ajouter des collègues, classement filtré dessus).
+- **Équipes** (rejoindre/créer, classement par équipe).
+- **Classements par sport**, en plus du classement global.
+- Badges, notifications, défis entre équipes.
+
+## 8. Git & workflow (GitHub, duo)
+
+- Branche protégée : `main`, toujours via Pull Request.
+- Branches : `feature/<personne>-<description>`.
+- Commits en **Conventional Commits** (`feat: ...`, `fix: ...`).
+- Revue croisée avant merge, même rapide.
+- Avant PR : `flutter analyze` + `flutter test` doivent passer.
+
+## 9. Identité visuelle XEFI
+
+Couleurs et typographies extraites du site officiel xefi.fr (inspection
+CSS, pas une estimation) :
 
 | Rôle              | Couleur    | Usage                              |
 |-------------------|------------|-------------------------------------|
-| Primaire (accent) | `#E10600`  | CTA, accents                        |
-| Noir              | `#000000`  | AppBar                              |
+| Primaire (accent) | `#E10600`  | CTA, éléments actifs, rang de l'utilisateur |
+| Noir              | `#000000`  | Header/AppBar, texte fort           |
 | Blanc             | `#FFFFFF`  | Fond principal                      |
-| Texte secondaire  | `#2B2D42`  | Corps de texte                      |
+| Texte secondaire  | `#2B2D42`  | Corps de texte, sous-titres         |
 
-AppBar noire, accent rouge réservé aux actions, fond blanc, cartes avec
-ombre légère.
+Typographie : **Montserrat** (corps de texte et titres, en ExtraBold pour
+les titres — le site utilise une police propriétaire "Nomixa" non
+disponible publiquement). AppBar noire, accent rouge réservé aux actions et
+au rang de l'utilisateur, fond blanc.
 
-## 7. Conventions de code
+## 10. Conventions de code
 
-- Code 100% en anglais (`sessionRepository`, `duration_min` →
-  `durationMin` côté Dart, `session_repository.dart`...), seules les
-  chaînes affichées à l'écran restent en français.
-- Noms longs et explicites plutôt que courts et ambigus.
+- Code 100% en anglais (`sessionRepository`, `duration_min`,
+  `session_repository.dart`...), seules les chaînes affichées à l'écran
+  restent en français.
+- Noms longs et explicites plutôt que courts et ambigus — un nom qui a
+  besoin d'un commentaire pour être compris est un mauvais nom.
 - Pas de commentaire qui répète ce que dit déjà le code.
-- `flutter_lints` actif, pas de `print()` en prod.
-- Aucune clé API en dur dans le code — toujours via `--dart-define`.
+- Flutter : `flutter_lints` actif, pas de `print()` en prod, logique
+  métier dans les providers/repositories (pas dans les widgets), Riverpod
+  partout, couleurs/polices dans `core/theme` uniquement.
+- Supabase : Row Level Security activée dès la création de chaque table,
+  aucune clé secrète tierce en dur dans le code Dart.
 
-## 8. Sources
+## 11. Sources
 
 - https://www.xefi.fr/fr/decouvrir-xefi/a-propos-de-nous/qui-sommes-nous/
   (couleurs extraites du CSS calculé, police, logo)
 - https://api-ninjas.com/api/caloriesburned (Calories Burned API — clé
   gratuite sans carte bancaire)
-- https://openstreetmap.org (tuiles de carte, gratuites, sans clé)
+- https://supabase.com/docs (Auth, Postgres, Row Level Security, Edge
+  Functions, package Flutter `supabase_flutter`)
+- https://wger.de/api/v2/ et https://github.com/xefi/laravel-rest-api-flutter
+  — pistes explorées pour le backlog (section 7) / le vrai stack XEFI, mais
+  hors périmètre du V1 à 2 jours.

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'data/session_repository.dart';
-import 'screens/home_screen.dart';
-import 'theme/app_theme.dart';
+import 'core/theme/app_theme.dart';
+import 'screens/auth/auth_gate.dart';
+
+const _frenchLocale = Locale('fr', 'FR');
 
 class XefiSportApp extends StatelessWidget {
-  const XefiSportApp({super.key, required this.repository});
-
-  final SessionRepository repository;
+  const XefiSportApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +15,14 @@ class XefiSportApp extends StatelessWidget {
       title: 'XEFI Sport',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: HomeScreen(repository: repository),
+      locale: _frenchLocale,
+      supportedLocales: const [_frenchLocale],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: const AuthGate(),
     );
   }
 }
