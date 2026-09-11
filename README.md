@@ -143,6 +143,15 @@ comme l'autre) :
 flutter run -d chrome --web-port=8080 --dart-define-from-file=dart_define.web.json
 ```
 
+Cette commande ouvre elle-même une fenêtre Chrome, et **fermer cet onglet arrête
+le serveur** : `flutter run` considère que l'application s'est terminée. Pour
+garder le serveur en vie et ouvrir l'URL dans le navigateur déjà ouvert, vise le
+device `web-server` plutôt que `chrome`, puis va sur http://127.0.0.1:8080 :
+
+```
+flutter run -d web-server --web-port=8080 --web-hostname=127.0.0.1 --dart-define-from-file=dart_define.web.json
+```
+
 Ce qui change par rapport au mobile : le suivi GPS passe par la géolocalisation
 du navigateur, donc pas de `adb emu geo fix` — Chrome permet de simuler une
 position dans DevTools (Sensors → Location), mais il n'envoie qu'un point fixe,
