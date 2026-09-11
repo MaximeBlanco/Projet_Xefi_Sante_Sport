@@ -140,6 +140,56 @@ void main() {
       expect(find.text('—'), findsOneWidget);
     });
 
+    testWidgets('offers signing out and deleting the account', (tester) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Réglages'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Session'), findsOneWidget);
+      expect(find.text('Déconnexion'), findsOneWidget);
+      expect(find.text('Supprimer mon compte'), findsOneWidget);
+    });
+
+    testWidgets('asks before deleting, and does nothing when refused',
+        (tester) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Réglages'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Supprimer mon compte'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Supprimer mon compte'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Supprimer le compte ?'), findsOneWidget);
+      expect(find.textContaining('irréversible'), findsOneWidget);
+
+      await tester.tap(find.text('Annuler'));
+      await tester.pumpAndSettle();
+
+      // Backing out leaves the settings exactly as they were; had the deletion
+      // run, the repository override would have thrown.
+      expect(find.text('Supprimer le compte ?'), findsNothing);
+      expect(find.text('Mon compte'), findsOneWidget);
+    });
+
+    testWidgets('asks before signing out', (tester) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Réglages'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Déconnexion'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Déconnexion'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Se déconnecter ?'), findsOneWidget);
+    });
+
     testWidgets('invites a first session instead of showing empty panels',
         (tester) async {
       await tester.pumpWidget(

@@ -49,6 +49,35 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
     });
   }
 
+  /// Deletes the account and everything attached to it.
+  ///
+  /// Unlike the edits, nothing is invalidated afterwards: the sign-out inside
+  /// swaps the whole tree for the login screen, and refetching a profile that
+  /// no longer exists would only race that teardown with a doomed query.
+  Future<bool> deleteAccount() async {
+    state = const AsyncValue<void>.loading();
+    final keepAliveLink = ref.keepAlive();
+    try {
+      if (ref.read(currentUserProvider) == null) {
+        state = AsyncValue<void>.error(
+          const SignedOutWhileEditingException(),
+          StackTrace.current,
+        );
+        return false;
+      }
+
+      await ref.read(authRepositoryProvider).deleteAccount();
+
+      state = const AsyncValue<void>.data(null);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncValue<void>.error(error, stackTrace);
+      return false;
+    } finally {
+      keepAliveLink.close();
+    }
+  }
+
   Future<bool> _run(Future<void> Function(String userId) write) async {
     state = const AsyncValue<void>.loading();
     final keepAliveLink = ref.keepAlive();

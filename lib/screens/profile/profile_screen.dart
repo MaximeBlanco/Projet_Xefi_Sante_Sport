@@ -11,6 +11,7 @@ import '../../core/localization/app_locale.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/profile.dart';
 import '../../models/profile_stats.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/profile_editing_controller.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/profile_stats_provider.dart';
@@ -131,6 +132,81 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Future<void> _signOut() async {
+    final confirmed = await _confirm(
+      title: 'Se déconnecter ?',
+      message: 'Vous devrez saisir à nouveau votre e-mail et votre mot de '
+          'passe pour revenir.',
+      confirmLabel: 'Se déconnecter',
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(authRepositoryProvider).signOut();
+    } catch (_) {
+      // gotrue clears the local session before its network call, so the screen
+      // returns to the login page either way; only the remote revocation is in
+      // doubt, and that is worth saying.
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Déconnexion partielle, réessayez.')),
+      );
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    final confirmed = await _confirm(
+      title: 'Supprimer le compte ?',
+      message: 'Votre profil, vos séances, vos points et votre photo seront '
+          'supprimés définitivement. Vous disparaîtrez du classement. Cette '
+          'action est irréversible.',
+      confirmLabel: 'Supprimer',
+      isDestructive: true,
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final succeeded = await ref
+        .read(profileEditingControllerProvider.notifier)
+        .deleteAccount();
+    // On success the auth listener has already replaced this screen, so there
+    // is nothing left to tell: only a failure needs a word.
+    if (succeeded || !mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('La suppression a échoué, réessayez plus tard.'),
+      ),
+    );
+  }
+
+  Future<bool?> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool isDestructive = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: isDestructive
+                ? TextButton.styleFrom(foregroundColor: AppColors.primary)
+                : null,
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _reportOutcome(bool succeeded, String successMessage) {
     final error = ref.read(profileEditingControllerProvider).error;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -160,6 +236,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         onPickAvatar: _pickAvatar,
         onEditName: () => _editName(data),
         onEditWeight: () => _editWeight(data),
+        onSignOut: _signOut,
+        onDeleteAccount: _deleteAccount,
       ),
     );
   }
@@ -248,6 +326,8 @@ class _ProfileBody extends ConsumerStatefulWidget {
     required this.onPickAvatar,
     required this.onEditName,
     required this.onEditWeight,
+    required this.onSignOut,
+    required this.onDeleteAccount,
   });
 
   final Profile profile;
@@ -255,6 +335,8 @@ class _ProfileBody extends ConsumerStatefulWidget {
   final VoidCallback onPickAvatar;
   final VoidCallback onEditName;
   final VoidCallback onEditWeight;
+  final VoidCallback onSignOut;
+  final VoidCallback onDeleteAccount;
 
   @override
   ConsumerState<_ProfileBody> createState() => _ProfileBodyState();
@@ -301,6 +383,8 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                 onPickAvatar: widget.onPickAvatar,
                 onEditName: widget.onEditName,
                 onEditWeight: widget.onEditWeight,
+                onSignOut: widget.onSignOut,
+                onDeleteAccount: widget.onDeleteAccount,
               ),
             },
           ),
@@ -744,6 +828,8 @@ class _SettingsTab extends StatelessWidget {
     required this.onPickAvatar,
     required this.onEditName,
     required this.onEditWeight,
+    required this.onSignOut,
+    required this.onDeleteAccount,
   });
 
   final Profile profile;
@@ -751,6 +837,8 @@ class _SettingsTab extends StatelessWidget {
   final VoidCallback onPickAvatar;
   final VoidCallback onEditName;
   final VoidCallback onEditWeight;
+  final VoidCallback onSignOut;
+  final VoidCallback onDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -787,6 +875,32 @@ class _SettingsTab extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 14),
+        // Its own panel, below the edits: leaving and deleting are not settings
+        // among others, and putting them one tap away from the weight field is
+        // how they get hit by accident.
+        RiseIn(
+          delay: staggerFor(3),
+          child: _Panel(
+            title: 'Session',
+            child: Column(
+              children: [
+                _SettingRow(
+                  icon: Icons.logout,
+                  label: 'Déconnexion',
+                  onTap: isSaving ? null : onSignOut,
+                ),
+                _SettingRow(
+                  icon: Icons.delete_outline,
+                  label: 'Supprimer mon compte',
+                  isDestructive: true,
+                  onTap: isSaving ? null : onDeleteAccount,
+                  isLast: true,
+                ),
+              ],
+            ),
+          ),
+        ),
         if (isSaving) ...[
           const SizedBox(height: 16),
           const Center(
@@ -806,20 +920,30 @@ class _SettingRow extends StatelessWidget {
   const _SettingRow({
     required this.icon,
     required this.label,
-    required this.value,
     required this.onTap,
+    this.value,
+    this.isDestructive = false,
     this.isLast = false,
   });
 
   final IconData icon;
   final String label;
-  final String value;
+
+  /// Absent on a row that is an action rather than a value you can read.
+  final String? value;
   final VoidCallback? onTap;
+
+  /// Draws the row in the primary red, which the identity reserves for calls to
+  /// action and, here, for the one action nothing undoes.
+  final bool isDestructive;
   final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final labelColour = isDestructive
+        ? AppColors.primary
+        : AppColors.secondaryText;
 
     return Padding(
       padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
@@ -844,23 +968,26 @@ class _SettingRow extends StatelessWidget {
                 child: Text(
                   label,
                   style: textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.secondaryText,
+                    fontWeight: isDestructive
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                    color: labelColour,
                   ),
                 ),
               ),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 150),
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: AppColors.secondaryText.withValues(alpha: 0.6),
+              if (value != null)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: Text(
+                    value!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: AppColors.secondaryText.withValues(alpha: 0.6),
+                    ),
                   ),
                 ),
-              ),
               const Icon(Icons.chevron_right, size: 20, color: Color(0xFFB0B2BE)),
             ],
           ),

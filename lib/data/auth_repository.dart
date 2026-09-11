@@ -31,4 +31,24 @@ class AuthRepository {
   Future<void> signOut() {
     return _client.auth.signOut();
   }
+
+  /// Deletes the signed-in account for good, then clears the local session.
+  ///
+  /// Removing an auth user needs the service role key, which must never ship
+  /// inside the app, so the deletion happens in the Edge Function. It takes no
+  /// arguments on purpose: the account to delete is the one the access token
+  /// identifies, so the client cannot name anybody else's.
+  ///
+  /// The sign-out runs whatever the outcome. If the account is gone, the local
+  /// session is now worthless; if the call failed, signing out is the safe
+  /// place to leave someone who just asked to be deleted.
+  Future<void> deleteAccount() async {
+    try {
+      await _client.functions.invoke(_deleteAccountFunction);
+    } finally {
+      await signOut();
+    }
+  }
+
+  static const String _deleteAccountFunction = 'delete-account';
 }
