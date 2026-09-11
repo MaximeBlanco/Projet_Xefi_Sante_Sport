@@ -75,7 +75,10 @@ class _SessionHistoryScreenState extends ConsumerState<SessionHistoryScreen> {
                   onRefresh: _refreshSessions,
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+                    // Wider on the right than on the left: the timeline rail
+                    // already holds the left-hand gutter open, so equal padding
+                    // left the cards pressed against the right edge.
+                    padding: const EdgeInsets.fromLTRB(16, 4, 24, 96),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) => SlideIn(
                       delay: staggerFor(index),
