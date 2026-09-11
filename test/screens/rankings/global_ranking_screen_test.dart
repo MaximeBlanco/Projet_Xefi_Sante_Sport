@@ -3,6 +3,7 @@ import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/providers/auth_provider.dart';
 import 'package:monapp/providers/ranking_provider.dart';
 import 'package:monapp/screens/rankings/global_ranking_screen.dart';
+import 'package:monapp/widgets/ranking_podium.dart';
 import 'package:monapp/widgets/ranking_tile.dart';
 
 import '../../support/test_fixtures.dart';
@@ -40,7 +41,14 @@ void main() {
       final highlighted = tiles.where((tile) => tile.isCurrentUser);
 
       expect(highlighted.map((tile) => tile.entry.userId), <String>['user-2']);
-      expect(find.text('300 pts'), findsOneWidget);
+
+      // Every row measures itself against the leader, so the bars are
+      // comparable rather than each scaled to its own maximum.
+      expect(
+        tiles.map((tile) => tile.leaderPoints).toSet(),
+        <int>{ranking.first.totalPoints},
+      );
+      expect(find.byType(RankingPodium), findsOneWidget);
     });
 
     testWidgets('shows the French empty state when nobody scored yet',

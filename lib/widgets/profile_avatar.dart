@@ -14,12 +14,17 @@ class ProfileAvatar extends StatelessWidget {
     this.avatarUrl,
     this.radius = 24,
     this.highlighted = false,
+    this.onDarkChip = false,
   });
 
   final String name;
   final String? avatarUrl;
   final double radius;
   final bool highlighted;
+
+  /// Draws the initials white on a dark disc, for the leaderboard rows where a
+  /// pale chip would disappear into the white card behind it.
+  final bool onDarkChip;
 
   String get _initials {
     final words = name.trim().split(RegExp(r'[\s@._-]+'))
@@ -37,8 +42,12 @@ class ProfileAvatar extends StatelessWidget {
     final url = avatarUrl;
     final background = highlighted
         ? AppColors.primary
+        : onDarkChip
+        ? AppColors.secondaryText
         : AppColors.black.withValues(alpha: 0.06);
-    final foreground = highlighted ? AppColors.white : AppColors.secondaryText;
+    final foreground = highlighted || onDarkChip
+        ? AppColors.white
+        : AppColors.secondaryText;
 
     final initials = Text(
       _initials,

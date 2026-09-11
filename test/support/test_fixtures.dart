@@ -57,6 +57,8 @@ RankingEntry buildRankingEntry({
   int totalDurationMin = 120,
   double totalCaloriesBurned = 900.0,
   int sessionCount = 3,
+  int? currentRank,
+  int? previousRank,
 }) {
   return RankingEntry(
     userId: userId,
@@ -65,6 +67,8 @@ RankingEntry buildRankingEntry({
     totalDurationMin: totalDurationMin,
     totalCaloriesBurned: totalCaloriesBurned,
     sessionCount: sessionCount,
+    currentRank: currentRank,
+    previousRank: previousRank,
   );
 }
 
