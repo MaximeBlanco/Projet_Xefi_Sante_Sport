@@ -204,10 +204,21 @@ class _CardFront extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(height * 0.075),
+            // Brushed metal rather than a flat black: several stops rather than
+            // two, alternating slightly lighter and darker across the diagonal,
+            // which is what makes a surface read as polished instead of
+            // printed. Kept close to black so it stays the identity's black.
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF2A2A33), AppColors.black],
+              colors: [
+                Color(0xFF3A3A44),
+                Color(0xFF15151A),
+                Color(0xFF2E2E38),
+                Color(0xFF0B0B0E),
+                Color(0xFF232329),
+              ],
+              stops: [0, 0.28, 0.52, 0.78, 1],
             ),
             boxShadow: [
               BoxShadow(
@@ -336,10 +347,15 @@ class _CardFront extends StatelessWidget {
                       ),
                       colors: [
                         AppColors.white.withValues(alpha: 0),
-                        AppColors.white.withValues(alpha: 0.07),
+                        AppColors.white.withValues(alpha: 0.05),
+                        AppColors.white.withValues(alpha: 0.16),
+                        AppColors.white.withValues(alpha: 0.05),
                         AppColors.white.withValues(alpha: 0),
                       ],
-                      stops: const [0.28, 0.5, 0.72],
+                      // A narrow bright band with a soft skirt: a single wide
+                      // fade reads as a wash, a hard edge as a stripe, and only
+                      // the band between them looks like light on metal.
+                      stops: const [0.3, 0.44, 0.5, 0.56, 0.7],
                     ),
                   ),
                 ),

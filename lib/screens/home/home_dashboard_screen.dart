@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/domain/session_duration.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/home_summary.dart';
+import '../../providers/event_provider.dart';
 import '../../providers/home_summary_provider.dart';
 import '../../providers/weekly_health_provider.dart';
 import '../../widgets/async_value_view.dart';
+import '../../widgets/event_card.dart';
 import '../../widgets/motion.dart';
 import '../../widgets/session_tile.dart';
 import '../../widgets/weekly_health_card.dart';
@@ -62,6 +64,7 @@ class HomeDashboardScreen extends ConsumerWidget {
                   child: const Text('Enregistrer une séance'),
                 ),
               ),
+              const _UpcomingEventsSection(),
               if (data.lastSession != null)
                 RiseIn(
                   delay: const Duration(milliseconds: 360),
@@ -81,6 +84,51 @@ class HomeDashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What is coming up, as a row of cards you scroll sideways.
+///
+/// Its own consumer, and silent when there is nothing: an empty "À venir"
+/// heading on a home screen is worse than no heading, and a failed read of
+/// events must not cost the user their score.
+class _UpcomingEventsSection extends ConsumerWidget {
+  const _UpcomingEventsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = ref.watch(upcomingEventsProvider).valueOrNull;
+    if (events == null || events.isEmpty) return const SizedBox.shrink();
+
+    final now = ref.watch(todayProvider);
+
+    return RiseIn(
+      delay: const Duration(milliseconds: 320),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 40),
+          const _SectionLabel('À venir'),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: EventCard.height,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              // No padding of its own: the page already insets this section,
+              // and adding to it would push the first card away from the
+              // headings it belongs under.
+              padding: EdgeInsets.zero,
+              itemCount: events.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemBuilder: (context, index) => SlideIn(
+                delay: staggerFor(index, step: 70),
+                child: EventCard(event: events[index], now: now),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
