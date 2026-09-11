@@ -20,7 +20,10 @@ class TeamRepository {
   Future<Team> createTeam({required String name, required int colorValue}) async {
     final row = await _client
         .from('teams')
-        .insert({'name': name.trim(), 'color_value': colorValue})
+        .insert({
+          'name': name.trim(),
+          'color_value': Team.toDatabaseValue(colorValue),
+        })
         .select()
         .single();
     return Team.fromJson(row);

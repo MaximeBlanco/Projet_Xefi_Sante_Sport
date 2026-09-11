@@ -32,7 +32,7 @@ class AchievementTile extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+
         children: [
           Row(
             children: [
@@ -84,8 +84,31 @@ class AchievementTile extends StatelessWidget {
                   : AppColors.secondaryText.withValues(alpha: 0.55),
             ),
           ),
-          if (!isEarned) ...[
-            const SizedBox(height: 10),
+          const Spacer(),
+          if (isEarned)
+            // The earned tile would otherwise sit half empty next to a locked
+            // one carrying a bar and a count, which reads as a tile missing
+            // something rather than as a tile that is finished.
+            Row(
+              children: [
+                const Icon(
+                  Icons.emoji_events,
+                  size: 13,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  'Débloqué',
+                  style: textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            )
+          else ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(3),
               child: LinearProgressIndicator(

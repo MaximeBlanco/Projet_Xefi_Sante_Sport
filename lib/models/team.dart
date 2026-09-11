@@ -32,6 +32,13 @@ class Team {
     0xFF3D6B1F,
   ];
 
+  /// The column is `integer not null`, a signed 32-bit type, while an ARGB
+  /// colour is unsigned: 0xFFE10600 is 4 292 870 144, which Postgres rejects
+  /// outright as "integer out of range". Writing the same bits as a signed
+  /// value keeps the column and reading it back through [Color] gives the
+  /// colour again, because the constructor masks to 32 bits.
+  static int toDatabaseValue(int colorValue) => colorValue.toSigned(32);
+
   final String id;
   final String name;
   final int colorValue;
