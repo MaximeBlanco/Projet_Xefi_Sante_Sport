@@ -5,8 +5,11 @@ import '../models/ranking_entry.dart';
 import 'profile_avatar.dart';
 
 const _firstBlockHeight = 96.0;
-const _secondBlockHeight = 68.0;
-const _thirdBlockHeight = 54.0;
+
+/// Second and third share a height so their names and scores land on the same
+/// line. Differing heights pushed one set of labels above the other, which read
+/// as a misalignment rather than as a ranking.
+const _runnerUpBlockHeight = 62.0;
 const _slant = 14.0;
 
 /// The top three, on the black ground the identity uses for headers.
@@ -44,7 +47,7 @@ class RankingPodium extends StatelessWidget {
               child: _PodiumPlace(
                 entry: second,
                 place: 2,
-                blockHeight: _secondBlockHeight,
+                blockHeight: _runnerUpBlockHeight,
                 blockColour: AppColors.white.withValues(alpha: 0.10),
                 avatarRadius: 30,
                 slantUpToTheRight: true,
@@ -67,7 +70,7 @@ class RankingPodium extends StatelessWidget {
               child: _PodiumPlace(
                 entry: third,
                 place: 3,
-                blockHeight: _thirdBlockHeight,
+                blockHeight: _runnerUpBlockHeight,
                 blockColour: AppColors.white.withValues(alpha: 0.10),
                 avatarRadius: 30,
                 slantUpToTheRight: false,
@@ -132,7 +135,12 @@ class _PodiumPlace extends StatelessWidget {
             name: person.name,
             avatarUrl: person.avatarUrl,
             radius: avatarRadius,
-            highlighted: wearsCrown,
+            // On black, the defaults would draw a near-black disc with dark
+            // navy initials: both disappear.
+            discColour: wearsCrown
+                ? AppColors.primary
+                : AppColors.white.withValues(alpha: 0.16),
+            initialsColour: AppColors.white,
           ),
         ),
         const SizedBox(height: 8),
