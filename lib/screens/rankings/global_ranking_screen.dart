@@ -7,7 +7,6 @@ import '../../providers/ranking_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/ranking_tile.dart';
 import '../../widgets/motion.dart';
-import '../../widgets/xefi_backdrop.dart';
 
 class GlobalRankingScreen extends ConsumerWidget {
   const GlobalRankingScreen({super.key});
@@ -26,34 +25,32 @@ class GlobalRankingScreen extends ConsumerWidget {
     final globalRanking = ref.watch(globalRankingProvider);
     final currentUserId = ref.watch(currentUserProvider)?.id;
 
-    return XefiBackdrop(
-      child: RefreshIndicator(
-        onRefresh: () => _refreshGlobalRanking(ref),
-        child: AsyncValueView<List<RankingEntry>>(
-          value: globalRanking,
-          onRetry: () => ref.invalidate(globalRankingProvider),
-          emptyMessage: 'Aucun classement pour le moment.\nEnregistrez une séance pour ouvrir le bal.',
-          isEmpty: (rankingEntries) => rankingEntries.isEmpty,
-          builder: (rankingEntries) => ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: rankingEntries.length,
-            itemBuilder: (context, index) {
-              final rankingEntry = rankingEntries[index];
-              // From the left, in rank order: the leaderboard fills from the
-              // top down, and the history enters from the opposite side so the
-              // two lists never feel like the same screen.
-              return SlideIn(
-                fromLeft: true,
-                delay: staggerFor(index),
-                child: RankingTile(
-                  rank: index + 1,
-                  entry: rankingEntry,
-                  isCurrentUser: rankingEntry.userId == currentUserId,
-                ),
-              );
-            },
-          ),
+    return RefreshIndicator(
+      onRefresh: () => _refreshGlobalRanking(ref),
+      child: AsyncValueView<List<RankingEntry>>(
+        value: globalRanking,
+        onRetry: () => ref.invalidate(globalRankingProvider),
+        emptyMessage: 'Aucun classement pour le moment.\nEnregistrez une séance pour ouvrir le bal.',
+        isEmpty: (rankingEntries) => rankingEntries.isEmpty,
+        builder: (rankingEntries) => ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          itemCount: rankingEntries.length,
+          itemBuilder: (context, index) {
+            final rankingEntry = rankingEntries[index];
+            // From the left, in rank order: the leaderboard fills from the
+            // top down, and the history enters from the opposite side so the
+            // two lists never feel like the same screen.
+            return SlideIn(
+              fromLeft: true,
+              delay: staggerFor(index),
+              child: RankingTile(
+                rank: index + 1,
+                entry: rankingEntry,
+                isCurrentUser: rankingEntry.userId == currentUserId,
+              ),
+            );
+          },
         ),
       ),
     );
