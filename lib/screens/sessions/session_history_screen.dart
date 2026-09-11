@@ -5,6 +5,7 @@ import '../../models/session.dart';
 import '../../providers/session_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/session_tile.dart';
+import 'session_detail_screen.dart';
 
 class SessionHistoryScreen extends ConsumerWidget {
   const SessionHistoryScreen({super.key});
@@ -37,7 +38,14 @@ class SessionHistoryScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           itemCount: sessions.length,
           separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) => SessionTile(session: sessions[index]),
+          itemBuilder: (context, index) => SessionTile(
+            session: sessions[index],
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => SessionDetailScreen(session: sessions[index]),
+              ),
+            ),
+          ),
         ),
       ),
     );

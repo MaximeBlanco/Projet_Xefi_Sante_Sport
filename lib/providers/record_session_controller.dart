@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/gps_point.dart';
 import '../models/sport.dart';
 import 'auth_provider.dart';
 import 'profile_provider.dart';
@@ -23,6 +24,9 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
     required Sport sport,
     required DateTime date,
     required int durationMin,
+    List<GpsPoint>? route,
+    double? distanceKm,
+    double? elevationGainM,
   }) async {
     state = const AsyncValue<void>.loading();
     final keepAliveLink = ref.keepAlive();
@@ -56,6 +60,9 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
             durationMin: durationMin,
             caloriesBurned: calories?.kcal,
             caloriesEstimated: calories?.isLocalEstimate ?? false,
+            route: route,
+            distanceKm: distanceKm,
+            elevationGainM: elevationGainM,
           );
 
       ref.invalidate(userSessionsProvider);

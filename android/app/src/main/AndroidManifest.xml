@@ -3,6 +3,11 @@
          the network. The debug and profile manifests declare this on their own, so omitting it
          here breaks release builds only. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Route tracking for the GPS-trackable sports (running, cycling, walking). Coarse is
+         declared alongside fine because Android 12+ lets the user grant only the approximate
+         location, and the request fails outright if the coarse permission is missing. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <application
         android:label="XEFI Sport"
         android:name="${applicationName}"

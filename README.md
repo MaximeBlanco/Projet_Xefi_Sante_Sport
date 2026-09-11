@@ -145,6 +145,48 @@ l'API 28. `android/app/src/debug/res/xml/network_security_config.xml` lève
 l'interdiction pour les seuls hôtes de loopback, et uniquement en build debug —
 la release reste sans cleartext.
 
+## Suivi GPS du parcours
+
+Sur un sport marqué `is_gps_trackable`, le formulaire propose « Suivre le
+parcours en direct » : l'app enregistre les positions, trace le parcours sur la
+carte, et à l'arrêt renvoie la durée, la distance et le dénivelé au formulaire.
+Les points bruts sont stockés dans `sessions.route` (jsonb), et l'historique
+affiche la carte au détail d'une séance.
+
+Les fonds de carte viennent d'**OpenStreetMap** via `flutter_map` : aucune clé,
+aucun compte de facturation, contrairement à Google Maps.
+
+Deux choix qui méritent une explication :
+
+- **Distance et dénivelé sont recalculés depuis les points**, jamais lus depuis
+  la vitesse ou l'odomètre du téléphone, qui dérivent. Un seuil ignore le bruit
+  GPS (5 m à l'horizontale, 3 m à la verticale) : sans lui, un téléphone posé
+  sur une table invente des centaines de mètres.
+- **Android lit le GPS via `LocationManager`**, pas via le fused provider de
+  Play Services (`forceLocationManager: true`). Fused est meilleur en intérieur,
+  mais cette fonctionnalité ne sert qu'en extérieur, où fused retombe de toute
+  façon sur le GPS brut — et surtout, le fused provider de l'émulateur ignore
+  `adb emu geo fix`, ce qui rendrait toute démo impossible.
+
+### Simuler un parcours dans l'émulateur
+
+L'émulateur ne bouge pas, mais on peut lui envoyer des positions. Démarre le
+suivi dans l'app, puis envoie une suite de points espacés de plus de 5 m :
+
+```powershell
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+$lat = 45.7500; $lng = 4.8500
+for ($i = 0; $i -lt 20; $i++) {
+  $lat += 0.00025; $lng += 0.00008
+  & $adb emu geo fix $lng.ToString("F6") $lat.ToString("F6") 170
+  Start-Sleep -Milliseconds 700
+}
+```
+
+À savoir : l'émulateur impose sa propre altitude et ignore celle passée à
+`geo fix`, donc le dénivelé reste à 0 en simulation. Le calcul lui-même est
+couvert par `test/core/route_metrics_test.dart`.
+
 ## Auth en développement
 
 Supabase demande une confirmation d'email par défaut : juste après une
@@ -165,7 +207,11 @@ Miroir de la definition of done (cahier des charges, section 6) :
 - Calories réelles issues de la Calories Burned API via l'Edge Function,
   stockées avec la séance, avec repli sur la formule MET (préfixe `≈`) quand
   l'API ne répond pas.
-- Historique personnel des séances, de la plus récente à la plus ancienne.
+- Suivi GPS du parcours pour les sports marqués `is_gps_trackable` (course,
+  vélo, marche) : tracé en direct sur une carte, distance et dénivelé calculés,
+  durée pré-remplie à l'arrêt. Voir ci-dessous.
+- Historique personnel des séances, de la plus récente à la plus ancienne, avec
+  la carte du parcours au détail d'une séance qui en a un.
 - Classement global par points décroissants (`points = duration_min`, calculé
   côté base), avec le rang de l'utilisateur connecté mis en avant.
 - Charte XEFI respectée : couleurs et Montserrat centralisés dans

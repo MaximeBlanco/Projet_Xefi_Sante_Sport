@@ -22,9 +22,17 @@ DateFormat _buildSessionDateFormat() {
 final DateFormat _sessionDateFormat = _buildSessionDateFormat();
 
 class SessionTile extends StatelessWidget {
-  const SessionTile({super.key, required this.session, this.margin});
+  const SessionTile({
+    super.key,
+    required this.session,
+    this.margin,
+    this.onTap,
+  });
 
   final Session session;
+  final VoidCallback? onTap;
+
+  bool get _hasRoute => (session.route?.length ?? 0) > 1;
 
   /// Lists own their own gutter, so a screen that already pads its content
   /// passes [EdgeInsets.zero] rather than inheriting a second inset.
@@ -45,59 +53,81 @@ class SessionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final sport = session.sport;
+    final distanceKm = session.distanceKm;
 
     return Card(
-      margin:
-          margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              sport?.emoji ?? _unknownSportEmoji,
-              style: textTheme.headlineSmall,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    sport?.name ?? _unknownSportName,
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.black,
+      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                sport?.emoji ?? _unknownSportEmoji,
+                style: textTheme.headlineSmall,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sport?.name ?? _unknownSportName,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.black,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _sessionDateFormat.format(session.date),
-                    style: textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 4,
-                    children: [
-                      _SessionMetric(
-                        icon: Icons.schedule,
-                        label: '${session.durationMin} min',
-                      ),
-                      _SessionMetric(
-                        icon: Icons.local_fire_department_outlined,
-                        label: _caloriesLabel,
-                      ),
-                    ],
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _sessionDateFormat.format(session.date),
+                      style: textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 4,
+                      children: [
+                        _SessionMetric(
+                          icon: Icons.schedule,
+                          label: '${session.durationMin} min',
+                        ),
+                        _SessionMetric(
+                          icon: Icons.local_fire_department_outlined,
+                          label: _caloriesLabel,
+                        ),
+                        if (distanceKm != null)
+                          _SessionMetric(
+                            icon: Icons.route_outlined,
+                            label: '${distanceKm.toStringAsFixed(2)} km',
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _PointsBadge(points: session.points),
+                  if (_hasRoute) ...[
+                    const SizedBox(height: 8),
+                    const Icon(
+                      Icons.map_outlined,
+                      size: 18,
+                      color: AppColors.secondaryText,
+                    ),
+                  ],
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            _PointsBadge(points: session.points),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -138,10 +168,8 @@ class _PointsBadge extends StatelessWidget {
       ),
       child: Text(
         '$points pts',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: AppColors.white,
-          fontWeight: FontWeight.w700,
-        ),
+        style: Theme.of(context).textTheme.labelLarge
+            ?.copyWith(color: AppColors.white, fontWeight: FontWeight.w700),
       ),
     );
   }

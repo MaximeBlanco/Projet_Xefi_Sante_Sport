@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
+import '../models/gps_point.dart';
 import '../models/session.dart';
 
 class SessionRepository {
@@ -26,6 +27,9 @@ class SessionRepository {
     required int durationMin,
     double? caloriesBurned,
     bool caloriesEstimated = false,
+    List<GpsPoint>? route,
+    double? distanceKm,
+    double? elevationGainM,
   }) {
     return _client.from('sessions').insert({
       'user_id': userId,
@@ -34,6 +38,9 @@ class SessionRepository {
       'duration_min': durationMin,
       'calories_burned': caloriesBurned,
       'calories_estimated': caloriesEstimated,
+      'route': route?.map((point) => point.toJson()).toList(),
+      'distance_km': distanceKm,
+      'elevation_gain_m': elevationGainM,
     });
   }
 
