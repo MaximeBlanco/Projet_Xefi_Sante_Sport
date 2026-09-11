@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../rankings/global_ranking_screen.dart';
+import 'home_dashboard_screen.dart';
 import '../sessions/record_session_screen.dart';
 import '../sessions/session_history_screen.dart';
 
@@ -15,9 +16,10 @@ class HomeShellScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
-  static const _sessionsTabIndex = 0;
+  static const _homeTabIndex = 0;
+  static const _sessionsTabIndex = 1;
 
-  int _selectedTabIndex = _sessionsTabIndex;
+  int _selectedTabIndex = _homeTabIndex;
 
   void _openRecordSessionScreen() {
     Navigator.of(context).push<void>(
@@ -42,6 +44,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
   @override
   Widget build(BuildContext context) {
     final tabScreens = <Widget>[
+      const HomeDashboardScreen(),
       const SessionHistoryScreen(),
       const GlobalRankingScreen(),
     ];
@@ -71,6 +74,11 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
         currentIndex: _selectedTabIndex,
         onTap: (index) => setState(() => _selectedTabIndex = index),
         items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Accueil',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.fitness_center),
             label: 'Séances',

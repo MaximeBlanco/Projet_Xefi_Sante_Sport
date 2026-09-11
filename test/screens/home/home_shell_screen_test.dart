@@ -20,7 +20,7 @@ List<Override> buildEmptyDataOverrides() {
 
 void main() {
   group('HomeShellScreen', () {
-    testWidgets('exposes exactly the sessions and ranking tabs',
+    testWidgets('exposes exactly the home, sessions and ranking tabs',
         (tester) async {
       await tester.pumpWidget(
         buildTestApp(
@@ -34,10 +34,29 @@ void main() {
         find.byType(BottomNavigationBar),
       );
 
-      expect(bottomBar.items.length, 2);
+      expect(bottomBar.items.length, 3);
+      expect(find.text('Accueil'), findsOneWidget);
       expect(find.text('Séances'), findsOneWidget);
       expect(find.text('Classement'), findsOneWidget);
       expect(find.text('Contacts'), findsNothing);
+    });
+
+    testWidgets('opens on the home tab', (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: buildEmptyDataOverrides(),
+          child: const HomeShellScreen(),
+        ),
+      );
+      await tester.pump();
+
+      final bottomBar = tester.widget<BottomNavigationBar>(
+        find.byType(BottomNavigationBar),
+      );
+
+      // What the home tab renders is covered by its own test; here the shell
+      // only has to land on it rather than on the session list.
+      expect(bottomBar.currentIndex, 0);
     });
 
     testWidgets('keeps the logout action in the app bar', (tester) async {
@@ -61,6 +80,13 @@ void main() {
         ),
       );
       await tester.pump();
+
+      // The home tab carries its own call to action, so the floating button
+      // would be a second one saying the same thing.
+      expect(find.byType(FloatingActionButton), findsNothing);
+
+      await tester.tap(find.text('Séances'));
+      await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
 

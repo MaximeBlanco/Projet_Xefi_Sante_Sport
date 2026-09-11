@@ -22,9 +22,13 @@ DateFormat _buildSessionDateFormat() {
 final DateFormat _sessionDateFormat = _buildSessionDateFormat();
 
 class SessionTile extends StatelessWidget {
-  const SessionTile({super.key, required this.session});
+  const SessionTile({super.key, required this.session, this.margin});
 
   final Session session;
+
+  /// Lists own their own gutter, so a screen that already pads its content
+  /// passes [EdgeInsets.zero] rather than inheriting a second inset.
+  final EdgeInsetsGeometry? margin;
 
   String get _caloriesLabel {
     final caloriesBurned = session.caloriesBurned;
@@ -40,7 +44,8 @@ class SessionTile extends StatelessWidget {
     final sport = session.sport;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin:
+          margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
