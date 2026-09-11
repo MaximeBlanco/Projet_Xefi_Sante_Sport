@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -64,6 +66,29 @@ class LocationTracker {
     if (permission == LocationPermission.denied) {
       throw const LocationUnavailableException(
         "Sans accès à votre position, le parcours ne peut pas être suivi.",
+      );
+    }
+  }
+
+  /// How long a single fix may take before the caller is told it failed.
+  ///
+  /// Without a limit the request never completes on a device that cannot see
+  /// the sky, or in a browser whose geolocation permission is granted but
+  /// unanswered — and the screen waiting on it spins for ever.
+  static const Duration singleFixTimeout = Duration(seconds: 12);
+
+  /// One fix, for searching around the user rather than following them.
+  Future<GpsPoint> currentPosition() async {
+    await ensurePermitted();
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: _settings,
+      ).timeout(singleFixTimeout);
+      return _toGpsPoint(position);
+    } on TimeoutException {
+      throw const LocationUnavailableException(
+        "Votre position n'a pas pu être déterminée. Réessayez à l'extérieur, "
+        'ou saisissez le lieu vous-même.',
       );
     }
   }
