@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/xefi_logo.dart';
 import '../profile/profile_screen.dart';
 import '../rankings/global_ranking_screen.dart';
 import 'home_dashboard_screen.dart';
@@ -53,7 +54,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('XEFI Sport'),
+        title: const XefiLogo(variant: XefiLogoVariant.light, height: 22),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

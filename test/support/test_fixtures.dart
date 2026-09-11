@@ -87,7 +87,16 @@ Widget buildTestApp({
 }) {
   return ProviderScope(
     overrides: overrides,
-    child: MaterialApp(home: child),
+    child: MaterialApp(
+      // Entrance animations and the counting score would otherwise leave every
+      // test asserting on a half-played frame. Declaring reduced motion gives
+      // the end state on the first pump, and exercises the accessibility path
+      // the widgets honour.
+      home: MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: child,
+      ),
+    ),
   );
 }
 

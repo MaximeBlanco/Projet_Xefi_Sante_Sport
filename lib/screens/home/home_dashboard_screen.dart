@@ -6,7 +6,9 @@ import '../../core/theme/app_colors.dart';
 import '../../models/home_summary.dart';
 import '../../providers/home_summary_provider.dart';
 import '../../widgets/async_value_view.dart';
+import '../../widgets/fade_slide_in.dart';
 import '../../widgets/session_tile.dart';
+import '../../widgets/xefi_backdrop.dart';
 import '../sessions/record_session_screen.dart';
 
 class HomeDashboardScreen extends ConsumerWidget {
@@ -27,30 +29,48 @@ class HomeDashboardScreen extends ConsumerWidget {
       child: AsyncValueView<HomeSummary>(
         value: summary,
         onRetry: () => ref.invalidate(homeSummaryProvider),
-        builder: (data) => ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-          children: [
-            _Greeting(name: data.greetingName),
-            const SizedBox(height: 40),
-            _PointsHeadline(summary: data),
-            const SizedBox(height: 40),
-            _StatsRow(summary: data),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: () => _openRecordSession(context),
-              child: const Text('Enregistrer une séance'),
-            ),
-            if (data.lastSession != null) ...[
+        builder: (data) => XefiBackdrop(
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+            children: [
+              FadeSlideIn(child: _Greeting(name: data.greetingName)),
               const SizedBox(height: 40),
-              const _SectionLabel('Dernière séance'),
-              const SizedBox(height: 12),
-              SessionTile(
-                session: data.lastSession!,
-                margin: EdgeInsets.zero,
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 90),
+                child: _PointsHeadline(summary: data),
               ),
+              const SizedBox(height: 40),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 180),
+                child: _StatsRow(summary: data),
+              ),
+              const SizedBox(height: 40),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 270),
+                child: ElevatedButton(
+                  onPressed: () => _openRecordSession(context),
+                  child: const Text('Enregistrer une séance'),
+                ),
+              ),
+              if (data.lastSession != null)
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 360),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 40),
+                      const _SectionLabel('Dernière séance'),
+                      const SizedBox(height: 12),
+                      SessionTile(
+                        session: data.lastSession!,
+                        margin: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -100,8 +120,8 @@ class _PointsHeadline extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(
-              '${summary.totalPoints}',
+            AnimatedCounter(
+              value: summary.totalPoints,
               style: textTheme.headlineLarge?.copyWith(
                 fontSize: 68,
                 height: 1,
