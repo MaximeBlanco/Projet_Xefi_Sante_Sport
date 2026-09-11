@@ -20,8 +20,9 @@ void main() {
         ),
       );
 
-      expect(find.text('$_emDashPlaceholder kcal'), findsOneWidget);
+      expect(find.text(_emDashPlaceholder), findsOneWidget);
       expect(find.text('0 kcal'), findsNothing);
+      expect(find.text('DÉPENSE'), findsOneWidget);
     });
 
     testWidgets('rounds the calories returned by the external API',
@@ -33,7 +34,7 @@ void main() {
       );
 
       expect(find.text('412 kcal'), findsOneWidget);
-      expect(find.text('$_emDashPlaceholder kcal'), findsNothing);
+      expect(find.text(_emDashPlaceholder), findsNothing);
     });
 
     testWidgets('shows the sport, the French date, the duration and the points',
@@ -52,9 +53,11 @@ void main() {
 
       expect(find.text('Course à pied'), findsOneWidget);
       expect(find.text('🏃'), findsOneWidget);
-      expect(find.text('14 mars 2026'), findsOneWidget);
+      // The card heads each entry with the weekday and date, upper-cased.
+      expect(find.textContaining('14 MARS'), findsOneWidget);
       expect(find.text('45 min'), findsOneWidget);
-      expect(find.text('45 pts'), findsOneWidget);
+      expect(find.text('DURÉE'), findsOneWidget);
+      expect(find.text('+45 pts'), findsOneWidget);
     });
 
     testWidgets('degrades gracefully when the sport was not embedded',
