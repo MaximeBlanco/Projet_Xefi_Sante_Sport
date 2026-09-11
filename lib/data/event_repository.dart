@@ -14,7 +14,10 @@ class EventRepository {
     final rows = await _client
         .from('upcoming_events')
         .select()
-        .order('starts_at')
+        // Ascending has to be said: the client's order() defaults to
+        // descending, which put the furthest-off event first and the next one
+        // last, the wrong way round for a list of what is coming up.
+        .order('starts_at', ascending: true)
         .limit(_limit);
     return rows.map(AppEvent.fromJson).toList();
   }
