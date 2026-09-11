@@ -7,6 +7,7 @@ import 'package:monapp/models/session.dart';
 import 'package:monapp/providers/profile_provider.dart';
 import 'package:monapp/providers/profile_stats_provider.dart';
 import 'package:monapp/screens/profile/profile_screen.dart';
+import 'package:monapp/widgets/member_card.dart';
 
 import '../../support/test_fixtures.dart';
 
@@ -76,7 +77,71 @@ void main() {
       expect(find.text('Sport favori · Vélo'), findsOneWidget);
       // 135 points is still inside the first level.
       expect(find.text('NIVEAU 1 · DÉBUTANT'), findsOneWidget);
-      expect(find.text('2 jours'), findsOneWidget);
+      expect(find.text('N° MEMBRE'), findsOneWidget);
+      // The head of the real account id ("user-1" here), read in groups of four.
+      expect(find.text('USER 1'), findsOneWidget);
+    });
+
+    testWidgets('leans under the finger and settles back flat', (tester) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      Matrix4 cardTransform() => tester
+          .widget<Transform>(
+            find.descendant(
+              of: find.byType(MemberCard),
+              matching: find.byType(Transform),
+            ).first,
+          )
+          .transform;
+
+      final atRest = cardTransform();
+
+      final corner = tester.getTopLeft(find.byType(MemberCard));
+      final gesture = await tester.startGesture(corner + const Offset(12, 12));
+      await tester.pump();
+
+      expect(cardTransform(), isNot(atRest), reason: 'the card should lean');
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(cardTransform(), atRest, reason: 'and come back flat');
+    });
+
+    testWidgets('never leans far enough to show an edge', (tester) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      // Dragged to the very corner, the lean stays far short of the quarter
+      // turn that would take the card edge-on.
+      final corner = tester.getBottomRight(find.byType(MemberCard));
+      final gesture = await tester.startGesture(corner - const Offset(1, 1));
+      await tester.pump();
+
+      final transform = tester
+          .widget<Transform>(
+            find.descendant(
+              of: find.byType(MemberCard),
+              matching: find.byType(Transform),
+            ).first,
+          )
+          .transform;
+      // The x column of a Y-rotation holds cos(angle); staying above cos(30°)
+      // keeps the face square to the reader.
+      expect(transform.entry(0, 0).abs(), greaterThan(0.86));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('keeps the proportions of a real card', (tester) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      final card = tester.getSize(find.byType(MemberCard));
+      // ISO/IEC 7810 ID-1: 85.60 mm by 53.98 mm.
+      expect(card.width / card.height, closeTo(85.60 / 53.98, 0.01));
     });
 
     testWidgets('opens on the activity tab', (tester) async {
@@ -98,7 +163,9 @@ void main() {
       // Once as the longest session, once as the time logged on the bike.
       expect(find.text('1 h 30'), findsNWidgets(2));
       expect(find.text('2 h 15'), findsOneWidget);
-      // The card total, the best week and the best month all land on 135.
+      expect(find.text('Points au total'), findsOneWidget);
+      expect(find.text('Série en cours'), findsOneWidget);
+      // The total, the best week and the best month all land on 135.
       expect(find.text('135 pts'), findsNWidgets(3));
     });
 

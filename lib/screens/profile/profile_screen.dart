@@ -681,6 +681,20 @@ class _PersonalRecords extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // The two standing figures lead: they used to sit on the member card,
+        // which now carries identity only, and they belong somewhere.
+        _RecordRow(
+          icon: Icons.stars_outlined,
+          label: 'Points au total',
+          value: '${stats.totalPoints} pts',
+        ),
+        _RecordRow(
+          icon: Icons.bolt_outlined,
+          label: 'Série en cours',
+          value: stats.currentStreakDays == 1
+              ? '1 jour'
+              : '${stats.currentStreakDays} jours',
+        ),
         _RecordRow(
           icon: Icons.timer_outlined,
           label: 'Plus longue séance',
