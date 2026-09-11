@@ -13,3 +13,4 @@ Chaque fichier conserve ci-dessous son auteur, sa licence et sa page source.
 | tennis | Jens.thron | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:2020-center-court-scc.jpg |
 | football | Alexdevil | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Aris_Litex.jpg |
 | basketball | Stidpmi | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:CRB-Lille1.jpg |
+| weight lifting | Nenad Stojkovic | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Chest_flies_with_cable_machine_-_cable_crossover_flies.jpg |

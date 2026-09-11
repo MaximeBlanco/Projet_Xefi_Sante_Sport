@@ -11,6 +11,7 @@ import '../../providers/record_session_controller.dart';
 import '../../providers/sport_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/duration_wheel_picker.dart';
+import '../../widgets/fade_slide_in.dart';
 import '../../widgets/sport_carousel.dart';
 
 /// Matches the floating label an InputDecorator gives the other fields, so the
@@ -24,9 +25,8 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.secondaryText,
-          ),
+      style: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(color: AppColors.secondaryText),
     );
   }
 }
@@ -87,12 +87,13 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _errorMessage = null);
 
-    final wasRecorded =
-        await ref.read(recordSessionControllerProvider.notifier).submit(
-              sport: selectedSport,
-              date: _selectedDate,
-              durationMin: _durationMin,
-            );
+    final wasRecorded = await ref
+        .read(recordSessionControllerProvider.notifier)
+        .submit(
+          sport: selectedSport,
+          date: _selectedDate,
+          durationMin: _durationMin,
+        );
 
     if (!mounted) return;
 
@@ -128,11 +129,6 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
     return "L'enregistrement de la séance a échoué, réessayez.";
   }
 
-  /// Points equal the duration in minutes, so reading the wheels back tells
-  /// the user what they are about to score before they commit to it.
-  String get _durationSummary =>
-      '${SessionDuration.describeMinutes(_durationMin)} · $_durationMin pts';
-
   @override
   Widget build(BuildContext context) {
     final sportCatalogue = ref.watch(sportListProvider);
@@ -163,45 +159,68 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _FieldLabel('Sport'),
+                const FadeSlideIn(child: _FieldLabel('Sport')),
                 const SizedBox(height: 8),
-                SportCarousel(
-                  key: ObjectKey(sports),
-                  sports: sports,
-                  enabled: !isSubmitting,
-                  onSportSelected: (sport) {
-                    if (sport.id == _selectedSport?.id) return;
-                    setState(() => _selectedSport = sport);
-                  },
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 60),
+                  child: SportCarousel(
+                    key: ObjectKey(sports),
+                    sports: sports,
+                    enabled: !isSubmitting,
+                    onSportSelected: (sport) {
+                      if (sport.id == _selectedSport?.id) return;
+                      setState(() => _selectedSport = sport);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 28),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 140),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _FieldLabel('Durée'),
+                      const SizedBox(height: 4),
+                      DurationWheelPicker(
+                        durationMin: _durationMin,
+                        enabled: !isSubmitting,
+                        onDurationChanged: (durationMin) =>
+                            setState(() => _durationMin = durationMin),
+                      ),
+                      if (_durationError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            _durationError!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
-                InputDecorator(
-                  isEmpty: false,
-                  decoration: InputDecoration(
-                    labelText: 'Durée',
-                    errorText: _durationError,
-                    helperText:
-                        _durationError == null ? _durationSummary : null,
-                  ),
-                  child: DurationWheelPicker(
-                    durationMin: _durationMin,
-                    enabled: !isSubmitting,
-                    onDurationChanged: (durationMin) =>
-                        setState(() => _durationMin = durationMin),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 220),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _FieldLabel('Date'),
+                      const SizedBox(height: 8),
+                      _DateChip(
+                        label: _dateFormat.format(_selectedDate),
+                        onTap: isSubmitting ? null : _pickDate,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                InkWell(
-                  onTap: isSubmitting ? null : _pickDate,
-                  borderRadius: BorderRadius.circular(12),
-                  child: InputDecorator(
-                    decoration: const InputDecoration(labelText: 'Date'),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(_dateFormat.format(_selectedDate))),
-                        const Icon(Icons.calendar_today, size: 18),
-                      ],
-                    ),
+                const SizedBox(height: 28),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 300),
+                  child: _SessionRecap(
+                    sportName: _selectedSport?.name,
+                    durationMin: _durationMin,
                   ),
                 ),
                 if (_errorMessage != null) ...[
@@ -209,7 +228,9 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                   Text(
                     _errorMessage!,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -230,6 +251,115 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DateChip extends StatelessWidget {
+  const _DateChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.black.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 18,
+                color: AppColors.secondaryText,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.black,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.expand_more,
+                size: 20,
+                color: AppColors.secondaryText,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Restates the whole form in one line, and animates when any part of it
+/// changes.
+///
+/// The three inputs sit far apart on screen, so committing means remembering
+/// what was picked at the top while looking at the button at the bottom. The
+/// recap removes that, and since points equal the duration it is also where the
+/// score becomes visible before it is earned.
+class _SessionRecap extends StatelessWidget {
+  const _SessionRecap({required this.sportName, required this.durationMin});
+
+  final String? sportName;
+  final int durationMin;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: Text(
+                sportName == null
+                    ? SessionDuration.describeMinutes(durationMin)
+                    : '$sportName · ${SessionDuration.describeMinutes(durationMin)}',
+                key: ValueKey('$sportName-$durationMin'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.black,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          AnimatedCounter(
+            value: durationMin,
+            duration: const Duration(milliseconds: 400),
+            style: textTheme.titleLarge?.copyWith(
+              fontSize: 20,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'pts',
+            style: textTheme.bodyMedium?.copyWith(color: AppColors.primary),
+          ),
+        ],
       ),
     );
   }

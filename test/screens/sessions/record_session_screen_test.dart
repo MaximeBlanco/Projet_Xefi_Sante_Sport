@@ -84,13 +84,19 @@ void main() {
       );
       await tester.pump();
 
+      await tester.pumpAndSettle();
+
+      // The recap restates the whole form: the sport picked by the carousel,
+      // the duration from the wheels, and the score that follows from it.
       expect(
         find.text(
-          '${SessionDuration.describeMinutes(SessionDuration.defaultMinutes)}'
-          ' · ${SessionDuration.defaultMinutes} pts',
+          'Vélo · '
+          '${SessionDuration.describeMinutes(SessionDuration.defaultMinutes)}',
         ),
         findsOneWidget,
       );
+      expect(find.text('${SessionDuration.defaultMinutes}'), findsWidgets);
+      expect(find.text('pts'), findsOneWidget);
       expect(find.text('La durée doit être supérieure à 0'), findsNothing);
     });
 
@@ -115,7 +121,8 @@ void main() {
       await tester.drag(minuteWheel, const Offset(0, 88));
       await tester.pumpAndSettle();
 
-      expect(find.text('28 min · 28 pts'), findsOneWidget);
+      expect(find.text('Vélo · 28 min'), findsOneWidget);
+      expect(find.text('28'), findsWidgets);
     });
 
     testWidgets('shows the French empty state when no sport is available',

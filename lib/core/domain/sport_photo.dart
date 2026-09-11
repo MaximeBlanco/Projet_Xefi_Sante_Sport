@@ -18,6 +18,7 @@ abstract final class SportPhoto {
     'tennis': 'assets/sports/tennis.jpg',
     'football': 'assets/sports/football.jpg',
     'basketball': 'assets/sports/basketball.jpg',
+    'weight lifting': 'assets/sports/weight_lifting.jpg',
   };
 
   static String? assetFor(String? externalActivityName) {
