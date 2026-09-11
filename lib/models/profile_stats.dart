@@ -37,6 +37,7 @@ class ProfileStats {
     required this.totalCaloriesBurned,
     required this.longestSessionMin,
     required this.sportBreakdown,
+    this.totalDistanceKm,
     this.firstSessionDate,
   });
 
@@ -56,6 +57,7 @@ class ProfileStats {
     var totalPoints = 0;
     var totalCaloriesBurned = 0.0;
     var longestSessionMin = 0;
+    double? totalDistanceKm;
     DateTime? firstSessionDate;
     final tallies = <String, SportTally>{};
 
@@ -63,6 +65,12 @@ class ProfileStats {
       totalDurationMin += session.durationMin;
       totalPoints += session.points;
       totalCaloriesBurned += session.caloriesBurned ?? 0;
+
+      final sessionDistance = session.distanceKm;
+      if (sessionDistance != null) {
+        totalDistanceKm = (totalDistanceKm ?? 0) + sessionDistance;
+      }
+
       if (session.durationMin > longestSessionMin) {
         longestSessionMin = session.durationMin;
       }
@@ -92,6 +100,7 @@ class ProfileStats {
       totalCaloriesBurned: totalCaloriesBurned,
       longestSessionMin: longestSessionMin,
       sportBreakdown: breakdown,
+      totalDistanceKm: totalDistanceKm,
       firstSessionDate: firstSessionDate,
     );
   }
@@ -102,6 +111,11 @@ class ProfileStats {
   final double totalCaloriesBurned;
   final int longestSessionMin;
   final List<SportTally> sportBreakdown;
+
+  /// Null rather than zero when no session of the period was GPS-tracked: a
+  /// month of swimming is not a month of zero kilometres.
+  final double? totalDistanceKm;
+
   final DateTime? firstSessionDate;
 
   bool get hasSessions => sessionCount > 0;

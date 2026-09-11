@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/domain/body_weight_range.dart';
 import '../../core/domain/session_duration.dart';
+import '../../core/domain/stats_period.dart';
 import '../../core/localization/app_locale.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/profile.dart';
@@ -14,6 +15,7 @@ import '../../models/profile_stats.dart';
 import '../../providers/profile_editing_controller.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/profile_stats_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/profile_avatar.dart';
 
@@ -254,11 +256,14 @@ class _ProfileBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(profileStatsProvider);
+    final period = ref.watch(statsPeriodProvider);
 
     return RefreshIndicator(
+      // The stats derive from the sessions, so refreshing them means refetching
+      // those rather than invalidating a value that only ever recomputes.
       onRefresh: () async {
         ref.invalidate(currentProfileProvider);
-        ref.invalidate(profileStatsProvider);
+        ref.invalidate(userSessionsProvider);
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -278,10 +283,20 @@ class _ProfileBody extends ConsumerWidget {
           const SizedBox(height: 8),
           Center(child: _WeightLine(profile: profile, onEdit: onEditWeight)),
           const SizedBox(height: 40),
+          const _SectionLabel('Statistiques'),
+          const SizedBox(height: 12),
+          // Outside the AsyncValueView so the control the user just tapped does
+          // not vanish underneath them while the numbers behind it settle.
+          _PeriodSelector(
+            selected: period,
+            onSelected: (period) =>
+                ref.read(statsPeriodProvider.notifier).state = period,
+          ),
+          const SizedBox(height: 20),
           AsyncValueView<ProfileStats>(
             value: stats,
-            onRetry: () => ref.invalidate(profileStatsProvider),
-            builder: (data) => _StatsSection(stats: data),
+            onRetry: () => ref.invalidate(userSessionsProvider),
+            builder: (data) => _StatsSection(stats: data, period: period),
           ),
         ],
       ),
@@ -397,16 +412,45 @@ class _WeightLine extends StatelessWidget {
   }
 }
 
+/// Lets the profile answer "what have I done" over a week, a month or the whole
+/// history without three separate screens saying the same thing.
+class _PeriodSelector extends StatelessWidget {
+  const _PeriodSelector({required this.selected, required this.onSelected});
+
+  final StatsPeriod selected;
+  final ValueChanged<StatsPeriod> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<StatsPeriod>(
+      segments: [
+        for (final period in StatsPeriod.values)
+          ButtonSegment<StatsPeriod>(
+            value: period,
+            label: Text(period.label),
+          ),
+      ],
+      selected: {selected},
+      showSelectedIcon: false,
+      onSelectionChanged: (selection) => onSelected(selection.first),
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+}
+
 class _StatsSection extends StatelessWidget {
-  const _StatsSection({required this.stats});
+  const _StatsSection({required this.stats, required this.period});
 
   final ProfileStats stats;
+  final StatsPeriod period;
 
   @override
   Widget build(BuildContext context) {
     if (!stats.hasSessions) {
       return Text(
-        "Vos statistiques apparaîtront dès votre première séance.",
+        period.emptyMessage,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodyMedium,
       );
@@ -415,15 +459,15 @@ class _StatsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel('Statistiques'),
-        const SizedBox(height: 16),
         _StatGrid(stats: stats),
         const SizedBox(height: 32),
         const _SectionLabel('Répartition par sport'),
         const SizedBox(height: 16),
         for (final tally in stats.sportBreakdown)
           _SportBar(tally: tally, totalDurationMin: stats.totalDurationMin),
-        if (stats.firstSessionDate != null) ...[
+        // Only over the whole history: the first session of a filtered week is
+        // just its oldest one, which this sentence would misname.
+        if (period == StatsPeriod.allTime && stats.firstSessionDate != null) ...[
           const SizedBox(height: 24),
           Text(
             'Premier entraînement le '
@@ -443,6 +487,7 @@ class _StatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final totalDistanceKm = stats.totalDistanceKm;
     final tiles = <Widget>[
       _StatTile(value: '${stats.totalPoints}', label: 'points'),
       _StatTile(value: '${stats.sessionCount}', label: 'séances'),
@@ -464,6 +509,11 @@ class _StatGrid extends StatelessWidget {
             : _missingValuePlaceholder,
         label: 'kcal',
       ),
+      if (totalDistanceKm != null)
+        _StatTile(
+          value: totalDistanceKm.toStringAsFixed(1),
+          label: 'km parcourus',
+        ),
     ];
 
     return GridView.count(

@@ -36,6 +36,8 @@ Session buildSession({
   int points = 45,
   double? caloriesBurned = 380.0,
   bool caloriesEstimated = false,
+  double? distanceKm,
+  double? elevationGainM,
   DateTime? createdAt,
   Sport? sport,
   bool withEmbeddedSport = true,
@@ -49,6 +51,8 @@ Session buildSession({
     points: points,
     caloriesBurned: caloriesBurned,
     caloriesEstimated: caloriesEstimated,
+    distanceKm: distanceKm,
+    elevationGainM: elevationGainM,
     createdAt: createdAt ?? DateTime(2026, 3, 14, 18, 30),
     sport: withEmbeddedSport ? (sport ?? buildSport(id: sportId)) : null,
   );
