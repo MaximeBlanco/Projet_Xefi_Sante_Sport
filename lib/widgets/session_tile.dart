@@ -30,12 +30,15 @@ class SessionTile extends StatelessWidget {
   /// passes [EdgeInsets.zero] rather than inheriting a second inset.
   final EdgeInsetsGeometry? margin;
 
+  /// The "≈" marks a value the app computed itself from the sport's MET because
+  /// the calories provider could not answer, so it never passes for a measured one.
   String get _caloriesLabel {
     final caloriesBurned = session.caloriesBurned;
     if (caloriesBurned == null) {
       return '$_missingValuePlaceholder kcal';
     }
-    return '${caloriesBurned.round()} kcal';
+    final rounded = '${caloriesBurned.round()} kcal';
+    return session.caloriesEstimated ? '≈ $rounded' : rounded;
   }
 
   @override

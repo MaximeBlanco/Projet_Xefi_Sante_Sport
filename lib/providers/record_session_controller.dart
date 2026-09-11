@@ -36,13 +36,17 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
         return false;
       }
 
+      // No weight means neither the provider nor the MET formula has anything to
+      // work with, so the session is stored without calories rather than with a
+      // fabricated number.
       final weightKg = await _readCurrentProfileWeightKg();
-      final caloriesBurned = weightKg == null
+      final calories = weightKg == null
           ? null
           : await ref.read(caloriesServiceProvider).calculateCalories(
               activity: sport.externalActivityName ?? sport.name,
               weightKg: weightKg,
               durationMin: durationMin,
+              met: sport.met,
             );
 
       await ref.read(sessionRepositoryProvider).createSession(
@@ -50,7 +54,8 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
             sportId: sport.id,
             date: date,
             durationMin: durationMin,
-            caloriesBurned: caloriesBurned,
+            caloriesBurned: calories?.kcal,
+            caloriesEstimated: calories?.isLocalEstimate ?? false,
           );
 
       ref.invalidate(userSessionsProvider);

@@ -13,6 +13,7 @@ Sport buildSport({
   int? wgerId,
   bool isGpsTrackable = false,
   String? externalActivityName = 'running',
+  double met = 9.8,
 }) {
   return Sport(
     id: id,
@@ -22,6 +23,7 @@ Sport buildSport({
     wgerId: wgerId,
     isGpsTrackable: isGpsTrackable,
     externalActivityName: externalActivityName,
+    met: met,
   );
 }
 
@@ -33,6 +35,7 @@ Session buildSession({
   int durationMin = 45,
   int points = 45,
   double? caloriesBurned = 380.0,
+  bool caloriesEstimated = false,
   DateTime? createdAt,
   Sport? sport,
   bool withEmbeddedSport = true,
@@ -45,6 +48,7 @@ Session buildSession({
     durationMin: durationMin,
     points: points,
     caloriesBurned: caloriesBurned,
+    caloriesEstimated: caloriesEstimated,
     createdAt: createdAt ?? DateTime(2026, 3, 14, 18, 30),
     sport: withEmbeddedSport ? (sport ?? buildSport(id: sportId)) : null,
   );

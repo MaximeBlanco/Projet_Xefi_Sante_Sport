@@ -80,10 +80,26 @@ fonction y a accès.
    ```
 
 Si la fonction n'est pas déployée ou si l'API tombe, enregistrer une séance
-marche quand même : la séance est stockée sans calories et l'historique
-affiche un tiret plutôt qu'un faux `0`. Les points (= durée en minutes) et le
+marche quand même : l'app bascule sur la formule MET (voir ci-dessous) et
+l'historique préfixe la valeur d'un `≈`. Les points (= durée en minutes) et le
 classement ne dépendent pas de l'API. Le poids saisi à l'inscription sert au
-calcul : un profil sans poids ne déclenche pas l'appel.
+calcul : un profil sans poids ne déclenche ni l'appel ni l'estimation, et la
+séance est alors stockée sans calories (l'historique affiche un tiret).
+
+### Repli local quand l'API ne répond pas
+
+Chaque sport porte son MET (`sports.met`, valeurs du Compendium of Physical
+Activities). Dès que l'Edge Function échoue — API en panne, quota épuisé, ou
+tout simplement aucune clé configurée — l'app calcule elle-même :
+
+```
+kcal = MET x poids_kg x durée_heures
+```
+
+La séance stocke alors `calories_estimated = true`, et l'historique affiche
+`≈ 368 kcal` au lieu de `368 kcal` : une estimation locale ne doit jamais
+passer pour une valeur mesurée. C'est ce qui permet de faire une démo complète
+sans clé api-ninjas et sans réseau.
 
 ## Développement 100 % local (sans compte Supabase)
 
@@ -116,9 +132,9 @@ puis redémarre :
 CALORIES_API_KEY=<ta-cle>
 ```
 
-Sans cette clé la fonction répond « not configured », les séances sont
-enregistrées avec des calories nulles et l'historique affiche un tiret : rien
-d'autre n'est bloqué.
+Sans cette clé la fonction répond « not configured », et l'app retombe sur la
+formule MET : les séances gardent des calories, simplement préfixées d'un `≈`.
+Rien n'est bloqué.
 
 Commandes utiles : `npx supabase status` (URL et clés), `npx supabase stop`
 (arrêt, les données sont conservées), `npx supabase db reset` (rejoue les
@@ -147,7 +163,8 @@ Miroir de la definition of done (cahier des charges, section 6) :
   molettes heures/minutes (la base ne stocke que des minutes), date
   (les dates futures sont refusées).
 - Calories réelles issues de la Calories Burned API via l'Edge Function,
-  stockées avec la séance.
+  stockées avec la séance, avec repli sur la formule MET (préfixe `≈`) quand
+  l'API ne répond pas.
 - Historique personnel des séances, de la plus récente à la plus ancienne.
 - Classement global par points décroissants (`points = duration_min`, calculé
   côté base), avec le rang de l'utilisateur connecté mis en avant.

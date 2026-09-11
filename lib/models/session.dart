@@ -11,6 +11,7 @@ class Session {
     required this.points,
     required this.createdAt,
     this.caloriesBurned,
+    this.caloriesEstimated = false,
     this.distanceKm,
     this.elevationGainM,
     this.route,
@@ -27,6 +28,7 @@ class Session {
       durationMin: _parseNumber(json['duration_min'])?.toInt() ?? 0,
       points: _parseNumber(json['points'])?.toInt() ?? 0,
       caloriesBurned: _parseNumber(json['calories_burned'])?.toDouble(),
+      caloriesEstimated: json['calories_estimated'] as bool? ?? false,
       distanceKm: _parseNumber(json['distance_km'])?.toDouble(),
       elevationGainM: _parseNumber(json['elevation_gain_m'])?.toDouble(),
       route: (json['route'] as List<dynamic>?)
@@ -46,6 +48,7 @@ class Session {
   final int durationMin;
   final int points;
   final double? caloriesBurned;
+  final bool caloriesEstimated;
   final double? distanceKm;
   final double? elevationGainM;
   final List<GpsPoint>? route;

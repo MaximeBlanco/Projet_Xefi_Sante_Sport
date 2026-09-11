@@ -25,6 +25,7 @@ class SessionRepository {
     required DateTime date,
     required int durationMin,
     double? caloriesBurned,
+    bool caloriesEstimated = false,
   }) {
     return _client.from('sessions').insert({
       'user_id': userId,
@@ -32,6 +33,7 @@ class SessionRepository {
       'date': _formatAsPostgresDate(date),
       'duration_min': durationMin,
       'calories_burned': caloriesBurned,
+      'calories_estimated': caloriesEstimated,
     });
   }
 

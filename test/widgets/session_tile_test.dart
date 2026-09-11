@@ -36,6 +36,23 @@ void main() {
       expect(find.text('$_emDashPlaceholder kcal'), findsNothing);
     });
 
+    testWidgets('marks a locally estimated value so it cannot pass for a '
+        'measured one', (tester) async {
+      await tester.pumpWidget(
+        buildTestAppWithScaffold(
+          child: SessionTile(
+            session: buildSession(
+              caloriesBurned: 367.5,
+              caloriesEstimated: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('≈ 368 kcal'), findsOneWidget);
+      expect(find.text('368 kcal'), findsNothing);
+    });
+
     testWidgets('shows the sport, the French date, the duration and the points',
         (tester) async {
       await tester.pumpWidget(
