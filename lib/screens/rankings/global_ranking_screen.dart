@@ -84,7 +84,7 @@ class _Leaderboard extends StatelessWidget {
             fromLeft: true,
             delay: staggerFor(entryIndex),
             child: Padding(
-              padding: EdgeInsets.only(top: entryIndex == 0 ? 16 : 0),
+              padding: EdgeInsets.only(top: entryIndex == 0 ? 12 : 0),
               child: RankingTile(
                 rank: rankingEntry.currentRank ?? entryIndex + 1,
                 entry: rankingEntry,

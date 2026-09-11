@@ -17,6 +17,11 @@ const _slant = 14.0;
 /// Second sits left and third right of the winner, which is how a podium is
 /// read, and the block heights carry the order so the shape says who won before
 /// any number is read.
+///
+/// It is a panel inset from the edges rather than a full-bleed band: the app bar
+/// above it is the same black, and edge to edge the two merged into one shape
+/// with the podium reading as part of the header. The gutter of page ground, the
+/// rounded corners and the lift off the page are what separate them.
 class RankingPodium extends StatelessWidget {
   const RankingPodium({
     super.key,
@@ -36,49 +41,108 @@ class RankingPodium extends StatelessWidget {
 
     if (first == null) return const SizedBox.shrink();
 
-    return ColoredBox(
-      color: AppColors.black,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 24, 12, 0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: _PodiumPlace(
-                entry: second,
-                place: 2,
-                blockHeight: _runnerUpBlockHeight,
-                blockColour: AppColors.white.withValues(alpha: 0.10),
-                avatarRadius: 30,
-                slantUpToTheRight: true,
-                isCurrentUser: second?.userId == currentUserId,
-              ),
-            ),
-            Expanded(
-              child: _PodiumPlace(
-                entry: first,
-                place: 1,
-                blockHeight: _firstBlockHeight,
-                blockColour: AppColors.primary,
-                avatarRadius: 38,
-                wearsCrown: true,
-                slantUpToTheRight: true,
-                isCurrentUser: first.userId == currentUserId,
-              ),
-            ),
-            Expanded(
-              child: _PodiumPlace(
-                entry: third,
-                place: 3,
-                blockHeight: _runnerUpBlockHeight,
-                blockColour: AppColors.white.withValues(alpha: 0.10),
-                avatarRadius: 30,
-                slantUpToTheRight: false,
-                isCurrentUser: third?.userId == currentUserId,
-              ),
-            ),
-          ],
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        // Not flat black: the lit top edge is what tells the eye where the
+        // header stops and the podium starts.
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF26262E), AppColors.black],
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'PODIUM',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.white,
+                    fontSize: 10,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  entries.length == 1
+                      ? '1 participant'
+                      : '${entries.length} participants',
+                  style: textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    color: AppColors.white.withValues(alpha: 0.45),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: _PodiumPlace(
+                    entry: second,
+                    place: 2,
+                    blockHeight: _runnerUpBlockHeight,
+                    blockColour: AppColors.white.withValues(alpha: 0.10),
+                    avatarRadius: 30,
+                    slantUpToTheRight: true,
+                    isCurrentUser: second?.userId == currentUserId,
+                  ),
+                ),
+                Expanded(
+                  child: _PodiumPlace(
+                    entry: first,
+                    place: 1,
+                    blockHeight: _firstBlockHeight,
+                    blockColour: AppColors.primary,
+                    avatarRadius: 38,
+                    wearsCrown: true,
+                    slantUpToTheRight: true,
+                    isCurrentUser: first.userId == currentUserId,
+                  ),
+                ),
+                Expanded(
+                  child: _PodiumPlace(
+                    entry: third,
+                    place: 3,
+                    blockHeight: _runnerUpBlockHeight,
+                    blockColour: AppColors.white.withValues(alpha: 0.10),
+                    avatarRadius: 30,
+                    slantUpToTheRight: false,
+                    isCurrentUser: third?.userId == currentUserId,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
