@@ -125,12 +125,30 @@ l'émulateur Android joint la machine hôte :
 ```
 
 La stack locale sert aussi l'Edge Function. Pour avoir de vraies calories,
-mets ta clé api-ninjas dans `supabase/functions/.env` (fichier ignoré par git)
-puis redémarre :
+copie `supabase/functions/.env.example` en `supabase/functions/.env` (ignoré
+par git), colle ta clé api-ninjas dedans, puis redémarre la stack :
 
 ```
 CALORIES_API_KEY=<ta-cle>
 ```
+
+```
+npx supabase stop && npx supabase start
+```
+
+Pour vérifier que l'appel externe aboutit vraiment, sans passer par l'app —
+c'est la commande à avoir sous la main en soutenance :
+
+```bash
+ANON=$(npx supabase status -o json | grep -o '"ANON_KEY": *"[^"]*"' | cut -d'"' -f4)
+curl -s -X POST http://127.0.0.1:54321/functions/v1/calculate-calories \
+  -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
+  -d '{"activity":"cycling","weightKg":75,"durationMin":60}'
+```
+
+Une réponse `{"caloriesBurned":...}` prouve que la chaîne complète fonctionne :
+app → Edge Function → API externe. Un `{"error":"The calories provider is not
+configured."}` signifie que la clé n'est pas lue.
 
 Sans cette clé la fonction répond « not configured », et l'app retombe sur la
 formule MET : les séances gardent des calories, simplement préfixées d'un `≈`.
