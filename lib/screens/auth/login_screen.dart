@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/localization/auth_error_messages.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/fade_slide_in.dart';
@@ -47,7 +48,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             password: _passwordController.text,
           );
     } on AuthException catch (error) {
-      if (mounted) setState(() => _errorMessage = error.message);
+      if (mounted) {
+        setState(() => _errorMessage = describeAuthException(error));
+      }
     } catch (error) {
       // gotrue only wraps what it recognises: a timeout, a malformed 2xx body or a
       // failure in the session listener escapes as something else, and without this

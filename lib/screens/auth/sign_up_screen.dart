@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/domain/body_weight_range.dart';
+import '../../core/localization/auth_error_messages.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 
@@ -81,7 +82,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           );
       if (mounted) Navigator.of(context).pop();
     } on AuthException catch (error) {
-      if (mounted) setState(() => _errorMessage = error.message);
+      if (mounted) {
+        setState(() => _errorMessage = describeAuthException(error));
+      }
     } catch (error) {
       if (mounted) {
         setState(() => _errorMessage = "La création du compte a échoué.");
