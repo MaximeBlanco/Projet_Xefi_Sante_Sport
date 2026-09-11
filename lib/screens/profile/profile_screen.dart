@@ -135,7 +135,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _signOut() async {
     final confirmed = await _confirm(
       title: 'Se déconnecter ?',
-      message: 'Vous devrez saisir à nouveau votre e-mail et votre mot de '
+      message:
+          'Vous devrez saisir à nouveau votre e-mail et votre mot de '
           'passe pour revenir.',
       confirmLabel: 'Se déconnecter',
     );
@@ -157,7 +158,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _deleteAccount() async {
     final confirmed = await _confirm(
       title: 'Supprimer le compte ?',
-      message: 'Votre profil, vos séances, vos points et votre photo seront '
+      message:
+          'Votre profil, vos séances, vos points et votre photo seront '
           'supprimés définitivement. Vous disparaîtrez du classement. Cette '
           'action est irréversible.',
       confirmLabel: 'Supprimer',
@@ -191,15 +193,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         title: Text(title),
         content: Text(message),
         actions: [
+          // Explicitly neutral: the theme paints every text button red, which
+          // on a destructive dialog made backing out look exactly as grave as
+          // going through with it.
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.secondaryText,
+            ),
             child: const Text('Annuler'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: isDestructive
-                ? TextButton.styleFrom(foregroundColor: AppColors.primary)
-                : null,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              textStyle: isDestructive
+                  ? const TextStyle(fontWeight: FontWeight.w700)
+                  : null,
+            ),
             child: Text(confirmLabel),
           ),
         ],
@@ -434,7 +445,9 @@ class _TabSelector extends StatelessWidget {
                   curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   decoration: BoxDecoration(
-                    color: tab == current ? AppColors.black : Colors.transparent,
+                    color: tab == current
+                        ? AppColors.black
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Semantics(
@@ -489,7 +502,10 @@ class _ActivityTab extends StatelessWidget {
           best: stats.bestMonthPoints,
         ),
       ),
-      _Panel(title: 'Records personnels', child: _PersonalRecords(stats: stats)),
+      _Panel(
+        title: 'Records personnels',
+        child: _PersonalRecords(stats: stats),
+      ),
       if (stats.sportBreakdown.isNotEmpty)
         _Panel(
           title: 'Répartition par sport',
@@ -988,7 +1004,11 @@ class _SettingRow extends StatelessWidget {
                     ),
                   ),
                 ),
-              const Icon(Icons.chevron_right, size: 20, color: Color(0xFFB0B2BE)),
+              const Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: Color(0xFFB0B2BE),
+              ),
             ],
           ),
         ),
