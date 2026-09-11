@@ -68,19 +68,41 @@ class _Backdrop extends StatelessWidget {
       errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
     );
 
-    return Opacity(
-      opacity: isEarned ? 0.30 : 0.12,
-      child: isEarned
-          ? photo
-          : ColorFiltered(
-              colorFilter: const ColorFilter.matrix(<double>[
-                0.2126, 0.7152, 0.0722, 0, 0, //
-                0.2126, 0.7152, 0.0722, 0, 0, //
-                0.2126, 0.7152, 0.0722, 0, 0, //
-                0, 0, 0, 1, 0, //
-              ]),
-              child: photo,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Opacity(
+          opacity: isEarned ? 0.34 : 0.10,
+          child: isEarned
+              ? photo
+              : ColorFiltered(
+                  colorFilter: const ColorFilter.matrix(<double>[
+                    0.2126, 0.7152, 0.0722, 0, 0, //
+                    0.2126, 0.7152, 0.0722, 0, 0, //
+                    0.2126, 0.7152, 0.0722, 0, 0, //
+                    0, 0, 0, 1, 0, //
+                  ]),
+                  child: photo,
+                ),
+        ),
+        // A scrim over the picture, heaviest where the words are. Dimming the
+        // photograph alone was not enough: a bright patch of sky landing behind
+        // the description made it unreadable, and the tile has to be legible
+        // whatever the picture happens to be doing at that corner.
+        if (isEarned)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  AppColors.black.withValues(alpha: 0.35),
+                  AppColors.black.withValues(alpha: 0.72),
+                ],
+              ),
             ),
+          ),
+      ],
     );
   }
 }
@@ -146,7 +168,7 @@ class _Body extends StatelessWidget {
             fontSize: 11,
             height: 1.3,
             color: isEarned
-                ? AppColors.white.withValues(alpha: 0.55)
+                ? AppColors.white.withValues(alpha: 0.75)
                 : AppColors.secondaryText.withValues(alpha: 0.55),
           ),
         ),
