@@ -5,9 +5,11 @@ import '../../core/domain/session_duration.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/home_summary.dart';
 import '../../providers/home_summary_provider.dart';
+import '../../providers/weekly_health_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/session_tile.dart';
+import '../../widgets/weekly_health_card.dart';
 import '../../widgets/xefi_backdrop.dart';
 import '../sessions/record_session_screen.dart';
 
@@ -16,7 +18,9 @@ class HomeDashboardScreen extends ConsumerWidget {
 
   void _openRecordSession(BuildContext context) {
     Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (context) => const RecordSessionScreen()),
+      MaterialPageRoute<void>(
+        builder: (context) => const RecordSessionScreen(),
+      ),
     );
   }
 
@@ -40,9 +44,14 @@ class HomeDashboardScreen extends ConsumerWidget {
                 delay: const Duration(milliseconds: 90),
                 child: _PointsHeadline(summary: data),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
               FadeSlideIn(
                 delay: const Duration(milliseconds: 180),
+                child: const _WeeklyHealthSection(),
+              ),
+              const SizedBox(height: 32),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 260),
                 child: _StatsRow(summary: data),
               ),
               const SizedBox(height: 40),
@@ -73,6 +82,21 @@ class HomeDashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Kept as its own consumer so a slow or failed health read never blanks the
+/// score above it.
+class _WeeklyHealthSection extends ConsumerWidget {
+  const _WeeklyHealthSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final health = ref.watch(weeklyHealthProvider);
+    return health.maybeWhen(
+      data: (data) => WeeklyHealthCard(health: data),
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }
@@ -167,10 +191,8 @@ class _RankBadge extends StatelessWidget {
       ),
       child: Text(
         '$rankLabel sur $participantCount',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.white,
-              fontWeight: FontWeight.w800,
-            ),
+        style: Theme.of(context).textTheme.labelLarge
+            ?.copyWith(color: AppColors.white, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -263,10 +285,10 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label.toUpperCase(),
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.secondaryText,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-          ),
+        color: AppColors.secondaryText,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
     );
   }
 }

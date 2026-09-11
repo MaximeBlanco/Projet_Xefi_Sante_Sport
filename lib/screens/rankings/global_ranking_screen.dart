@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/ranking_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/ranking_tile.dart';
+import '../../widgets/xefi_backdrop.dart';
 
 class GlobalRankingScreen extends ConsumerWidget {
   const GlobalRankingScreen({super.key});
@@ -24,26 +25,27 @@ class GlobalRankingScreen extends ConsumerWidget {
     final globalRanking = ref.watch(globalRankingProvider);
     final currentUserId = ref.watch(currentUserProvider)?.id;
 
-    return RefreshIndicator(
-      onRefresh: () => _refreshGlobalRanking(ref),
-      child: AsyncValueView<List<RankingEntry>>(
-        value: globalRanking,
-        onRetry: () => ref.invalidate(globalRankingProvider),
-        emptyMessage:
-            'Aucun classement pour le moment.\nEnregistrez une séance pour ouvrir le bal.',
-        isEmpty: (rankingEntries) => rankingEntries.isEmpty,
-        builder: (rankingEntries) => ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          itemCount: rankingEntries.length,
-          itemBuilder: (context, index) {
-            final rankingEntry = rankingEntries[index];
-            return RankingTile(
-              rank: index + 1,
-              entry: rankingEntry,
-              isCurrentUser: rankingEntry.userId == currentUserId,
-            );
-          },
+    return XefiBackdrop(
+      child: RefreshIndicator(
+        onRefresh: () => _refreshGlobalRanking(ref),
+        child: AsyncValueView<List<RankingEntry>>(
+          value: globalRanking,
+          onRetry: () => ref.invalidate(globalRankingProvider),
+          emptyMessage: 'Aucun classement pour le moment.\nEnregistrez une séance pour ouvrir le bal.',
+          isEmpty: (rankingEntries) => rankingEntries.isEmpty,
+          builder: (rankingEntries) => ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            itemCount: rankingEntries.length,
+            itemBuilder: (context, index) {
+              final rankingEntry = rankingEntries[index];
+              return RankingTile(
+                rank: index + 1,
+                entry: rankingEntry,
+                isCurrentUser: rankingEntry.userId == currentUserId,
+              );
+            },
+          ),
         ),
       ),
     );

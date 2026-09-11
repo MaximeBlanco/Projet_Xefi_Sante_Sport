@@ -5,6 +5,7 @@ import '../../models/session.dart';
 import '../../providers/session_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/session_tile.dart';
+import '../../widgets/xefi_backdrop.dart';
 
 class SessionHistoryScreen extends ConsumerWidget {
   const SessionHistoryScreen({super.key});
@@ -24,20 +25,24 @@ class SessionHistoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userSessions = ref.watch(userSessionsProvider);
 
-    return AsyncValueView<List<Session>>(
-      value: userSessions,
-      onRetry: () => ref.invalidate(userSessionsProvider),
-      emptyMessage: 'Aucune séance enregistrée pour le moment.\n'
-          'Appuyez sur + pour enregistrer la première.',
-      isEmpty: (sessions) => sessions.isEmpty,
-      builder: (sessions) => RefreshIndicator(
-        onRefresh: () => _refreshSessions(ref),
-        child: ListView.separated(
-          padding: _listPadding,
-          physics: const AlwaysScrollableScrollPhysics(),
-          itemCount: sessions.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) => SessionTile(session: sessions[index]),
+    return XefiBackdrop(
+      child: AsyncValueView<List<Session>>(
+        value: userSessions,
+        onRetry: () => ref.invalidate(userSessionsProvider),
+        emptyMessage:
+            'Aucune séance enregistrée pour le moment.\n'
+            'Appuyez sur + pour enregistrer la première.',
+        isEmpty: (sessions) => sessions.isEmpty,
+        builder: (sessions) => RefreshIndicator(
+          onRefresh: () => _refreshSessions(ref),
+          child: ListView.separated(
+            padding: _listPadding,
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: sessions.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) =>
+                SessionTile(session: sessions[index]),
+          ),
         ),
       ),
     );

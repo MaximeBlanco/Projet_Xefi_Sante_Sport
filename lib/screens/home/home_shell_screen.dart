@@ -54,7 +54,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const XefiLogo(variant: XefiLogoVariant.light, height: 22),
+        title: const XefiLockup(variant: XefiLogoVariant.light, logoHeight: 20),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

@@ -11,6 +11,25 @@ import '../../providers/record_session_controller.dart';
 import '../../providers/sport_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/duration_wheel_picker.dart';
+import '../../widgets/sport_carousel.dart';
+
+/// Matches the floating label an InputDecorator gives the other fields, so the
+/// carousel does not look like it belongs to a different form.
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.secondaryText,
+          ),
+    );
+  }
+}
 
 class RecordSessionScreen extends ConsumerStatefulWidget {
   const RecordSessionScreen({super.key});
@@ -114,15 +133,6 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
   String get _durationSummary =>
       '${SessionDuration.describeMinutes(_durationMin)} · $_durationMin pts';
 
-  Sport? _matchingSportInCatalogue(List<Sport> sports) {
-    final selectedSportId = _selectedSport?.id;
-    if (selectedSportId == null) return null;
-    for (final sport in sports) {
-      if (sport.id == selectedSportId) return sport;
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final sportCatalogue = ref.watch(sportListProvider);
@@ -153,26 +163,18 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DropdownButtonFormField<Sport>(
+                const _FieldLabel('Sport'),
+                const SizedBox(height: 8),
+                SportCarousel(
                   key: ObjectKey(sports),
-                  initialValue: _matchingSportInCatalogue(sports),
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Sport'),
-                  hint: const Text('Choisissez un sport'),
-                  items: [
-                    for (final sport in sports)
-                      DropdownMenuItem<Sport>(
-                        value: sport,
-                        child: Text('${sport.emoji}  ${sport.name}'),
-                      ),
-                  ],
-                  onChanged: isSubmitting
-                      ? null
-                      : (sport) => setState(() => _selectedSport = sport),
-                  validator: (sport) =>
-                      sport == null ? 'Choisissez un sport' : null,
+                  sports: sports,
+                  enabled: !isSubmitting,
+                  onSportSelected: (sport) {
+                    if (sport.id == _selectedSport?.id) return;
+                    setState(() => _selectedSport = sport);
+                  },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 InputDecorator(
                   isEmpty: false,
                   decoration: InputDecoration(

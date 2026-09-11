@@ -83,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const FadeSlideIn(
-                          child: Center(child: XefiLogo(height: 34)),
+                          child: Center(child: XefiLockup(logoHeight: 30)),
                         ),
                         const SizedBox(height: 48),
                         Text(
