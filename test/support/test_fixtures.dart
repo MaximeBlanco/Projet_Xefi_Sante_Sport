@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/models/session.dart';
 import 'package:monapp/models/sport.dart';
+import 'package:monapp/models/team_ranking_entry.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 Sport buildSport({
@@ -111,5 +112,29 @@ Widget buildTestAppWithScaffold({
   return buildTestApp(
     overrides: overrides,
     child: Scaffold(body: child),
+  );
+}
+
+TeamRankingEntry buildTeamRankingEntry({
+  String teamId = 'team-1',
+  String name = 'Les Rouges',
+  int colorValue = 0xFFE10600,
+  int memberCount = 3,
+  int totalPoints = 168,
+  int totalDurationMin = 168,
+  int sessionCount = 2,
+  int? currentRank = 1,
+  int? previousRank = 1,
+}) {
+  return TeamRankingEntry(
+    teamId: teamId,
+    name: name,
+    colorValue: colorValue,
+    memberCount: memberCount,
+    totalPoints: totalPoints,
+    totalDurationMin: totalDurationMin,
+    sessionCount: sessionCount,
+    currentRank: currentRank,
+    previousRank: previousRank,
   );
 }

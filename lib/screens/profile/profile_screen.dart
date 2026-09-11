@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/domain/achievement.dart';
 import '../../core/domain/body_weight_range.dart';
 import '../../core/domain/session_duration.dart';
 import '../../core/localization/app_locale.dart';
@@ -15,10 +16,13 @@ import '../../providers/auth_provider.dart';
 import '../../providers/profile_editing_controller.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/profile_stats_provider.dart';
+import '../../providers/team_provider.dart';
+import '../../widgets/achievement_tile.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/member_card.dart';
 import '../../widgets/monthly_points_chart.dart';
 import '../../widgets/motion.dart';
+import 'team_picker_sheet.dart';
 
 const String _missingValuePlaceholder = '—';
 
@@ -388,6 +392,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
             key: ValueKey(_tab),
             child: switch (_tab) {
               _ProfileTab.activity => _ActivityTab(stats: data),
+              _ProfileTab.badges => _BadgesTab(stats: data),
               _ProfileTab.settings => _SettingsTab(
                 profile: widget.profile,
                 isSaving: widget.isSaving,
@@ -407,6 +412,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
 
 enum _ProfileTab {
   activity('Activité'),
+  badges('Badges'),
   settings('Réglages');
 
   const _ProfileTab(this.label);
@@ -532,6 +538,81 @@ class _ActivityTab extends StatelessWidget {
           RiseIn(delay: staggerFor(index + 2), child: panels[index]),
           if (index < panels.length - 1) const SizedBox(height: 14),
         ],
+      ],
+    );
+  }
+}
+
+class _BadgesTab extends StatelessWidget {
+  const _BadgesTab({required this.stats});
+
+  final ProfileStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final progressList = Achievements.evaluate(stats);
+    final earned = progressList.where((entry) => entry.isEarned).length;
+    final nextUp = progressList.firstWhere(
+      (entry) => !entry.isEarned,
+      orElse: () => progressList.last,
+    );
+
+    return Column(
+      children: [
+        RiseIn(
+          delay: staggerFor(2),
+          child: _Panel(
+            title: 'Mes badges',
+            subtitle: '$earned sur ${progressList.length}',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progressList.isEmpty
+                        ? 0
+                        : earned / progressList.length,
+                    minHeight: 6,
+                    backgroundColor: AppColors.black.withValues(alpha: 0.07),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  earned == progressList.length
+                      ? 'Tous les badges sont débloqués. Bravo.'
+                      : 'Prochain badge · ${nextUp.achievement.label} '
+                            '(${nextUp.value}/${nextUp.achievement.target})',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        // Two columns at a fixed aspect rather than a free-flowing wrap: badges
+        // are compared against each other, and equal-sized tiles are what makes
+        // a wall of them scannable.
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: progressList.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.92,
+          ),
+          itemBuilder: (context, index) => ScaleIn(
+            delay: staggerFor(index + 3, step: 40),
+            child: AchievementTile(progress: progressList[index]),
+          ),
+        ),
       ],
     );
   }
@@ -899,8 +980,8 @@ class _SettingsTab extends StatelessWidget {
                       ? _missingValuePlaceholder
                       : '${profile.weightKg!.toStringAsFixed(0)} kg',
                   onTap: isSaving ? null : onEditWeight,
-                  isLast: true,
                 ),
+                _TeamSettingRow(profile: profile, isSaving: isSaving),
               ],
             ),
           ),
@@ -942,6 +1023,32 @@ class _SettingsTab extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// The team row, which has to read the team list to name the current team.
+///
+/// Its own widget so the rest of the settings stay a plain layout: only this
+/// one line depends on a provider that can still be loading.
+class _TeamSettingRow extends ConsumerWidget {
+  const _TeamSettingRow({required this.profile, required this.isSaving});
+
+  final Profile profile;
+  final bool isSaving;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final team = ref.watch(currentTeamProvider).valueOrNull;
+
+    return _SettingRow(
+      icon: Icons.groups_outlined,
+      label: 'Mon équipe',
+      value: team?.name ?? 'Aucune',
+      onTap: isSaving
+          ? null
+          : () => TeamPickerSheet.show(context, currentTeamId: profile.teamId),
+      isLast: true,
     );
   }
 }
