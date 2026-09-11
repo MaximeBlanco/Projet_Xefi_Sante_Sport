@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:monapp/models/gps_point.dart';
 import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/models/session.dart';
 import 'package:monapp/models/sport.dart';
@@ -38,6 +39,7 @@ Session buildSession({
   bool caloriesEstimated = false,
   double? distanceKm,
   double? elevationGainM,
+  List<GpsPoint>? route,
   DateTime? createdAt,
   Sport? sport,
   bool withEmbeddedSport = true,
@@ -53,6 +55,7 @@ Session buildSession({
     caloriesEstimated: caloriesEstimated,
     distanceKm: distanceKm,
     elevationGainM: elevationGainM,
+    route: route,
     createdAt: createdAt ?? DateTime(2026, 3, 14, 18, 30),
     sport: withEmbeddedSport ? (sport ?? buildSport(id: sportId)) : null,
   );

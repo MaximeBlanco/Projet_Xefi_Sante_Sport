@@ -40,7 +40,7 @@ class SessionDetailScreen extends StatelessWidget {
           if (route.isNotEmpty)
             Expanded(child: RouteMap(route: route))
           else
-            const Spacer(),
+            Expanded(child: _NoRouteNotice(isGpsTrackable: sport?.isGpsTrackable ?? false)),
           SafeArea(
             top: false,
             child: Padding(
@@ -86,6 +86,55 @@ class SessionDetailScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Stands in for the map on a session recorded without following a route,
+/// which is every manually entered one. An empty white half-screen reads as a
+/// map that failed to load, so it says which it is.
+class _NoRouteNotice extends StatelessWidget {
+  const _NoRouteNotice({required this.isGpsTrackable});
+
+  /// Only a sport that could have been tracked gets told how to get a map;
+  /// suggesting it for a swim would be pointing at a feature it never offers.
+  final bool isGpsTrackable;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.map_outlined,
+              size: 40,
+              color: AppColors.secondaryText,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Aucun parcours enregistré',
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.black,
+              ),
+            ),
+            if (isGpsTrackable) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Utilisez « Suivre le parcours en direct » au moment '
+                "d'enregistrer pour voir votre trajet ici.",
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
