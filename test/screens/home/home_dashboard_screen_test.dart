@@ -69,13 +69,15 @@ void main() {
       );
     });
 
-    testWidgets('offers the primary action', (tester) async {
+    testWidgets('leaves recording to the sessions tab', (tester) async {
       await tester.pumpWidget(buildScreen(buildSummary()));
       await tester.pump();
 
+      // The home screen reports; the sessions tab is where a session is
+      // entered, and its floating button is the one way in.
       expect(
         find.widgetWithText(ElevatedButton, 'Enregistrer une séance'),
-        findsOneWidget,
+        findsNothing,
       );
     });
 

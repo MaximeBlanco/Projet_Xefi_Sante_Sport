@@ -46,6 +46,19 @@ class Achievement {
   final String description;
   final AchievementMetric metric;
   final int target;
+
+  /// The photograph behind the tile, chosen for what the badge asks of you.
+  ///
+  /// Reuses the bundled sport photographs rather than adding a second set: they
+  /// are already licensed, credited and shipped, and a badge about hours of
+  /// sport is well served by a picture of somebody doing some.
+  String get backgroundAsset => switch (metric) {
+    AchievementMetric.sessions => 'assets/sports/running.jpg',
+    AchievementMetric.points => 'assets/sports/cycling.jpg',
+    AchievementMetric.streak => 'assets/sports/walking.jpg',
+    AchievementMetric.variety => 'assets/sports/basketball.jpg',
+    AchievementMetric.longestSession => 'assets/sports/rowing.jpg',
+  };
 }
 
 /// A badge together with where its owner stands on it.

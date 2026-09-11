@@ -1040,11 +1040,19 @@ class _TeamSettingRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final team = ref.watch(currentTeamProvider).valueOrNull;
+    final waiting =
+        ref.watch(pendingJoinRequestsProvider).valueOrNull?.length ?? 0;
 
     return _SettingRow(
       icon: Icons.groups_outlined,
       label: 'Mon équipe',
-      value: team?.name ?? 'Aucune',
+      // Requests are decided inside the sheet, which nobody opens without a
+      // reason to: the count is that reason, and without it an owner would
+      // leave people waiting indefinitely.
+      value: waiting > 0
+          ? (waiting == 1 ? '1 demande' : '$waiting demandes')
+          : team?.name ?? 'Aucune',
+      isValueUrgent: waiting > 0,
       onTap: isSaving
           ? null
           : () => TeamPickerSheet.show(context, currentTeamId: profile.teamId),
@@ -1060,8 +1068,13 @@ class _SettingRow extends StatelessWidget {
     required this.onTap,
     this.value,
     this.isDestructive = false,
+    this.isValueUrgent = false,
     this.isLast = false,
   });
+
+  /// Draws the value in red rather than grey, for the one case where it is
+  /// something waiting on you rather than a setting you can read past.
+  final bool isValueUrgent;
 
   final IconData icon;
   final String label;
@@ -1121,7 +1134,12 @@ class _SettingRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
                     style: textTheme.bodyMedium?.copyWith(
-                      color: AppColors.secondaryText.withValues(alpha: 0.6),
+                      fontWeight: isValueUrgent
+                          ? FontWeight.w800
+                          : FontWeight.w400,
+                      color: isValueUrgent
+                          ? AppColors.primary
+                          : AppColors.secondaryText.withValues(alpha: 0.6),
                     ),
                   ),
                 ),

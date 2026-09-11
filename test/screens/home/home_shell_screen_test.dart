@@ -63,7 +63,7 @@ void main() {
       expect(bottomBar.currentIndex, 0);
     });
 
-    testWidgets('keeps the logout action in the app bar', (tester) async {
+    testWidgets('keeps no logout action in the app bar', (tester) async {
       await tester.pumpWidget(
         buildTestApp(
           overrides: buildEmptyDataOverrides(),
@@ -72,7 +72,9 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byIcon(Icons.logout), findsOneWidget);
+      // Signing out lives in the profile settings beside deleting the account.
+      // One tap from the logo, on every screen, is how it gets hit by accident.
+      expect(find.byIcon(Icons.logout), findsNothing);
     });
 
     testWidgets('offers the record button on the sessions tab only',

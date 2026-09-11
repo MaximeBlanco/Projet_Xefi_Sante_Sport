@@ -6,25 +6,18 @@ import '../../core/theme/app_colors.dart';
 import '../../models/home_summary.dart';
 import '../../providers/event_provider.dart';
 import '../../providers/home_summary_provider.dart';
+import '../../providers/profile_stats_provider.dart';
 import '../../providers/weekly_health_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/event_card.dart';
+import '../../widgets/health_widgets.dart';
 import '../../widgets/motion.dart';
 import '../../widgets/session_tile.dart';
 import '../../widgets/weekly_health_card.dart';
 import '../../widgets/xefi_backdrop.dart';
-import '../sessions/record_session_screen.dart';
 
 class HomeDashboardScreen extends ConsumerWidget {
   const HomeDashboardScreen({super.key});
-
-  void _openRecordSession(BuildContext context) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (context) => const RecordSessionScreen(),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,14 +49,8 @@ class HomeDashboardScreen extends ConsumerWidget {
                 delay: const Duration(milliseconds: 260),
                 child: _StatsRow(summary: data),
               ),
-              const SizedBox(height: 40),
-              RiseIn(
-                delay: const Duration(milliseconds: 270),
-                child: ElevatedButton(
-                  onPressed: () => _openRecordSession(context),
-                  child: const Text('Enregistrer une séance'),
-                ),
-              ),
+              const SizedBox(height: 28),
+              const _HealthWidgetsSection(),
               const _UpcomingEventsSection(),
               if (data.lastSession != null)
                 RiseIn(
@@ -85,6 +72,26 @@ class HomeDashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The small health readings, which need both the week and the whole history.
+///
+/// Silent until both are in: half a set of tiles appearing, then rearranging as
+/// the second read lands, is worse than a beat of nothing.
+class _HealthWidgetsSection extends ConsumerWidget {
+  const _HealthWidgetsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final health = ref.watch(weeklyHealthProvider).valueOrNull;
+    final stats = ref.watch(profileStatsProvider).valueOrNull;
+    if (health == null || stats == null) return const SizedBox.shrink();
+
+    return RiseIn(
+      delay: const Duration(milliseconds: 290),
+      child: HealthWidgets(health: health, stats: stats),
     );
   }
 }

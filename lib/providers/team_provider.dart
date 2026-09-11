@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/supabase/supabase_providers.dart';
 import '../data/team_repository.dart';
 import '../models/team.dart';
+import '../models/team_join_request.dart';
 import 'auth_provider.dart';
 import 'profile_editing_controller.dart';
 import 'profile_provider.dart';
@@ -36,19 +37,51 @@ final currentTeamProvider = FutureProvider<Team?>((ref) async {
   return null;
 });
 
-/// Joining, leaving and creating a team, with the invalidations each implies.
+/// The signed-in user's own requests, so the picker can show which team they
+/// have already asked to join rather than offering to ask again.
+final myJoinRequestsProvider = FutureProvider<List<TeamJoinRequest>>((
+  ref,
+) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const [];
+  return ref.watch(teamRepositoryProvider).fetchMyRequests(userId: user.id);
+});
+
+/// Requests waiting on the signed-in user as a team owner. Empty for everybody
+/// else, because row-level security returns them nothing.
+final pendingJoinRequestsProvider = FutureProvider<List<TeamJoinRequest>>((
+  ref,
+) async {
+  if (ref.watch(currentUserProvider) == null) return const [];
+  return ref.watch(teamRepositoryProvider).fetchRequestsToDecide();
+});
+
+/// Asking, withdrawing, deciding, leaving and creating, with the invalidations
+/// each implies.
 class TeamMembershipController extends AutoDisposeAsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  Future<bool> join(String teamId) => _run((userId) async {
+  Future<bool> requestToJoin(String teamId) => _run((userId) async {
     await ref
         .read(teamRepositoryProvider)
-        .setTeam(userId: userId, teamId: teamId);
+        .requestToJoin(userId: userId, teamId: teamId);
   });
 
+  Future<bool> withdrawRequest(String requestId) => _run((_) async {
+    await ref.read(teamRepositoryProvider).withdrawRequest(requestId: requestId);
+  });
+
+  Future<bool> decide({required String requestId, required bool accepted}) {
+    return _run((_) async {
+      await ref
+          .read(teamRepositoryProvider)
+          .decide(requestId: requestId, accepted: accepted);
+    });
+  }
+
   Future<bool> leave() => _run((userId) async {
-    await ref.read(teamRepositoryProvider).setTeam(userId: userId, teamId: null);
+    await ref.read(teamRepositoryProvider).leaveTeam(userId: userId);
   });
 
   /// Creates the team and joins it in one go: someone creating a team is
@@ -59,12 +92,11 @@ class TeamMembershipController extends AutoDisposeAsyncNotifier<void> {
     required int colorValue,
   }) {
     return _run((userId) async {
-      final repository = ref.read(teamRepositoryProvider);
-      final team = await repository.createTeam(
+      await ref.read(teamRepositoryProvider).createTeam(
+        userId: userId,
         name: name,
         colorValue: colorValue,
       );
-      await repository.setTeam(userId: userId, teamId: team.id);
     });
   }
 
@@ -83,10 +115,13 @@ class TeamMembershipController extends AutoDisposeAsyncNotifier<void> {
 
       await write(signedInUser.id);
 
-      // The profile carries team_id, the teams list may have gained a row, and
-      // both leaderboards change the moment somebody joins or leaves.
+      // The profile carries team_id, the teams list may have gained a row, the
+      // request lists change on every one of these, and both leaderboards move
+      // the moment somebody joins or leaves.
       ref.invalidate(currentProfileProvider);
       ref.invalidate(teamsProvider);
+      ref.invalidate(myJoinRequestsProvider);
+      ref.invalidate(pendingJoinRequestsProvider);
       ref.invalidate(teamRankingProvider);
 
       state = const AsyncValue<void>.data(null);
