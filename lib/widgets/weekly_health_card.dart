@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
 import '../models/weekly_health.dart';
+import 'xefi_backdrop.dart';
 
 const _ringSize = 72.0;
 const _ringStroke = 7.0;
@@ -19,12 +20,7 @@ class WeeklyHealthCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.black.withValues(alpha: 0.035),
-        borderRadius: BorderRadius.circular(18),
-      ),
+    return FrostedPanel(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

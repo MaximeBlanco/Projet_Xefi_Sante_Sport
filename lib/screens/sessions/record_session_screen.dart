@@ -13,6 +13,7 @@ import '../../widgets/async_value_view.dart';
 import '../../widgets/duration_wheel_picker.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/sport_carousel.dart';
+import '../../widgets/xefi_backdrop.dart';
 
 /// Matches the floating label an InputDecorator gives the other fields, so the
 /// carousel does not look like it belongs to a different form.
@@ -136,13 +137,15 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nouvelle séance')),
-      body: AsyncValueView<List<Sport>>(
-        value: sportCatalogue,
-        onRetry: () => ref.invalidate(sportListProvider),
-        emptyMessage: 'Aucun sport disponible pour le moment.',
-        isEmpty: (sports) => sports.isEmpty,
-        builder: (sports) =>
-            _buildForm(sports: sports, isSubmitting: isSubmitting),
+      body: XefiBackdrop(
+        child: AsyncValueView<List<Sport>>(
+          value: sportCatalogue,
+          onRetry: () => ref.invalidate(sportListProvider),
+          emptyMessage: 'Aucun sport disponible pour le moment.',
+          isEmpty: (sports) => sports.isEmpty,
+          builder: (sports) =>
+              _buildForm(sports: sports, isSubmitting: isSubmitting),
+        ),
       ),
     );
   }
@@ -265,12 +268,13 @@ class _DateChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.black.withValues(alpha: 0.04),
-      borderRadius: BorderRadius.circular(14),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
+        borderRadius: BorderRadius.circular(16),
+        child: FrostedPanel(
+          borderRadius: 16,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
@@ -319,13 +323,12 @@ class _SessionRecap extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
+    return FrostedPanel(
+      borderRadius: 16,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-      ),
+      // The recap is the one panel that carries the accent: it states the score
+      // about to be earned, which is what the red is for.
+      tint: AppColors.primary.withValues(alpha: 0.09),
       child: Row(
         children: [
           Expanded(
