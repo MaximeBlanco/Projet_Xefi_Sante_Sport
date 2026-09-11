@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/ranking_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/ranking_tile.dart';
+import '../../widgets/motion.dart';
 import '../../widgets/xefi_backdrop.dart';
 
 class GlobalRankingScreen extends ConsumerWidget {
@@ -39,10 +40,17 @@ class GlobalRankingScreen extends ConsumerWidget {
             itemCount: rankingEntries.length,
             itemBuilder: (context, index) {
               final rankingEntry = rankingEntries[index];
-              return RankingTile(
-                rank: index + 1,
-                entry: rankingEntry,
-                isCurrentUser: rankingEntry.userId == currentUserId,
+              // From the left, in rank order: the leaderboard fills from the
+              // top down, and the history enters from the opposite side so the
+              // two lists never feel like the same screen.
+              return SlideIn(
+                fromLeft: true,
+                delay: staggerFor(index),
+                child: RankingTile(
+                  rank: index + 1,
+                  entry: rankingEntry,
+                  isCurrentUser: rankingEntry.userId == currentUserId,
+                ),
               );
             },
           ),

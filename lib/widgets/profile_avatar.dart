@@ -35,17 +35,18 @@ class ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = avatarUrl;
-    final background =
-        highlighted ? AppColors.primary : AppColors.black.withValues(alpha: 0.06);
+    final background = highlighted
+        ? AppColors.primary
+        : AppColors.black.withValues(alpha: 0.06);
     final foreground = highlighted ? AppColors.white : AppColors.secondaryText;
 
     final initials = Text(
       _initials,
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontSize: radius * 0.7,
-            fontWeight: FontWeight.w800,
-            color: foreground,
-          ),
+        fontSize: radius * 0.7,
+        fontWeight: FontWeight.w800,
+        color: foreground,
+      ),
     );
 
     return Container(

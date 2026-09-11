@@ -40,8 +40,9 @@ class _DurationWheelPickerState extends State<DurationWheelPicker> {
   void initState() {
     super.initState();
     _hoursController = FixedExtentScrollController(initialItem: _selectedHours);
-    _minutesController =
-        FixedExtentScrollController(initialItem: _selectedMinutes);
+    _minutesController = FixedExtentScrollController(
+      initialItem: _selectedMinutes,
+    );
   }
 
   @override
@@ -144,9 +145,8 @@ class _UnitLabel extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, right: 12),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.secondaryText,
-            ),
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(color: AppColors.secondaryText),
       ),
     );
   }

@@ -55,9 +55,7 @@ abstract final class AppTheme {
         color: AppColors.white,
         elevation: 2,
         shadowColor: AppColors.black.withValues(alpha: 0.15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

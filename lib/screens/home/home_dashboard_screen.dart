@@ -7,7 +7,7 @@ import '../../models/home_summary.dart';
 import '../../providers/home_summary_provider.dart';
 import '../../providers/weekly_health_provider.dart';
 import '../../widgets/async_value_view.dart';
-import '../../widgets/fade_slide_in.dart';
+import '../../widgets/motion.dart';
 import '../../widgets/session_tile.dart';
 import '../../widgets/weekly_health_card.dart';
 import '../../widgets/xefi_backdrop.dart';
@@ -38,24 +38,24 @@ class HomeDashboardScreen extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
             children: [
-              FadeSlideIn(child: _Greeting(name: data.greetingName)),
+              RiseIn(child: _Greeting(name: data.greetingName)),
               const SizedBox(height: 40),
-              FadeSlideIn(
+              RiseIn(
                 delay: const Duration(milliseconds: 90),
                 child: _PointsHeadline(summary: data),
               ),
               const SizedBox(height: 32),
-              FadeSlideIn(
+              RiseIn(
                 delay: const Duration(milliseconds: 180),
                 child: const _WeeklyHealthSection(),
               ),
               const SizedBox(height: 32),
-              FadeSlideIn(
+              RiseIn(
                 delay: const Duration(milliseconds: 260),
                 child: _StatsRow(summary: data),
               ),
               const SizedBox(height: 40),
-              FadeSlideIn(
+              RiseIn(
                 delay: const Duration(milliseconds: 270),
                 child: ElevatedButton(
                   onPressed: () => _openRecordSession(context),
@@ -63,7 +63,7 @@ class HomeDashboardScreen extends ConsumerWidget {
                 ),
               ),
               if (data.lastSession != null)
-                FadeSlideIn(
+                RiseIn(
                   delay: const Duration(milliseconds: 360),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

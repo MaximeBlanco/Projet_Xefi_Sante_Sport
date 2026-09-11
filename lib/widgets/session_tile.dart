@@ -44,8 +44,7 @@ class SessionTile extends StatelessWidget {
     final sport = session.sport;
 
     return Card(
-      margin:
-          margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -135,10 +134,8 @@ class _PointsBadge extends StatelessWidget {
       ),
       child: Text(
         '$points pts',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: AppColors.white,
-          fontWeight: FontWeight.w700,
-        ),
+        style: Theme.of(context).textTheme.labelLarge
+            ?.copyWith(color: AppColors.white, fontWeight: FontWeight.w700),
       ),
     );
   }

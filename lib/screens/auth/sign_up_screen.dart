@@ -73,7 +73,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     });
 
     try {
-      await ref.read(authRepositoryProvider).signUp(
+      await ref
+          .read(authRepositoryProvider)
+          .signUp(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             name: _nameController.text.trim(),
@@ -123,15 +125,17 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Mot de passe'),
+                    decoration: const InputDecoration(
+                      labelText: 'Mot de passe',
+                    ),
                     validator: _validatePassword,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _weightController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Poids (kg)',
                       helperText:

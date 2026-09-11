@@ -43,11 +43,9 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
 
   Future<bool> changeAvatar(File picture, {required DateTime pickedAt}) {
     return _run((userId) async {
-      await ref.read(profileRepositoryProvider).uploadAvatar(
-            userId: userId,
-            file: picture,
-            uploadedAt: pickedAt,
-          );
+      await ref
+          .read(profileRepositoryProvider)
+          .uploadAvatar(userId: userId, file: picture, uploadedAt: pickedAt);
     });
   }
 
@@ -86,5 +84,5 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
 
 final profileEditingControllerProvider =
     AutoDisposeAsyncNotifierProvider<ProfileEditingController, void>(
-  ProfileEditingController.new,
-);
+      ProfileEditingController.new,
+    );

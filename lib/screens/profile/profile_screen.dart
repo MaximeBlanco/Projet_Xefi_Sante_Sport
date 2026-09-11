@@ -15,6 +15,7 @@ import '../../providers/profile_editing_controller.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/profile_stats_provider.dart';
 import '../../widgets/async_value_view.dart';
+import '../../widgets/motion.dart';
 import '../../widgets/profile_avatar.dart';
 
 const String _missingValuePlaceholder = '—';
@@ -72,14 +73,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       title: 'Votre nom',
       initialValue: profile.name,
       hintText: 'Nom affiché dans le classement',
-      validator: (value) => (value == null || value.trim().isEmpty)
-          ? 'Nom obligatoire'
-          : null,
+      validator: (value) =>
+          (value == null || value.trim().isEmpty) ? 'Nom obligatoire' : null,
     );
     if (name == null || !mounted) return;
 
-    final succeeded =
-        await ref.read(profileEditingControllerProvider.notifier).renameTo(name);
+    final succeeded = await ref
+        .read(profileEditingControllerProvider.notifier)
+        .renameTo(name);
     if (!mounted) return;
     _reportOutcome(succeeded, 'Nom mis à jour');
   }
@@ -91,7 +92,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       hintText: 'En kilogrammes',
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       validator: (value) {
-        final weightKg = double.tryParse((value ?? '').trim().replaceAll(',', '.'));
+        final weightKg = double.tryParse(
+          (value ?? '').trim().replaceAll(',', '.'),
+        );
         if (weightKg == null) return 'Poids invalide';
         return BodyWeightRange.contains(weightKg)
             ? null
@@ -227,10 +230,7 @@ class _TextPromptDialogState extends State<_TextPromptDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Annuler'),
         ),
-        ElevatedButton(
-          onPressed: _submit,
-          child: const Text('Enregistrer'),
-        ),
+        ElevatedButton(onPressed: _submit, child: const Text('Enregistrer')),
       ],
     );
   }
@@ -264,19 +264,32 @@ class _ProfileBody extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
         children: [
+          // This screen has a single subject, so it grows from its own centre
+          // outwards rather than rising or sliding like the lists do.
           Center(
-            child: _EditableAvatar(
-              profile: profile,
-              isSaving: isSaving,
-              onTap: isSaving ? null : onPickAvatar,
+            child: ScaleIn(
+              from: 0.7,
+              child: _EditableAvatar(
+                profile: profile,
+                isSaving: isSaving,
+                onTap: isSaving ? null : onPickAvatar,
+              ),
             ),
           ),
           const SizedBox(height: 20),
           Center(
-            child: _NameHeading(name: profile.name, onEdit: onEditName),
+            child: ScaleIn(
+              delay: const Duration(milliseconds: 120),
+              child: _NameHeading(name: profile.name, onEdit: onEditName),
+            ),
           ),
           const SizedBox(height: 8),
-          Center(child: _WeightLine(profile: profile, onEdit: onEditWeight)),
+          Center(
+            child: ScaleIn(
+              delay: const Duration(milliseconds: 200),
+              child: _WeightLine(profile: profile, onEdit: onEditWeight),
+            ),
+          ),
           const SizedBox(height: 40),
           AsyncValueView<ProfileStats>(
             value: stats,
@@ -358,9 +371,8 @@ class _NameHeading extends StatelessWidget {
         Flexible(
           child: Text(
             name,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontSize: 26,
-                ),
+            style: Theme.of(context).textTheme.headlineMedium
+                ?.copyWith(fontSize: 26),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -558,8 +570,9 @@ class _SportBar extends StatelessWidget {
               value: share,
               minHeight: 6,
               backgroundColor: AppColors.black.withValues(alpha: 0.06),
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primary,
+              ),
             ),
           ),
         ],
@@ -578,10 +591,10 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label.toUpperCase(),
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.secondaryText,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-          ),
+        color: AppColors.secondaryText,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
     );
   }
 }

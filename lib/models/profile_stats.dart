@@ -74,7 +74,8 @@ class ProfileStats {
       tallies[session.sportId] = SportTally(
         sportId: session.sportId,
         sessionCount: (existing?.sessionCount ?? 0) + 1,
-        totalDurationMin: (existing?.totalDurationMin ?? 0) + session.durationMin,
+        totalDurationMin:
+            (existing?.totalDurationMin ?? 0) + session.durationMin,
         sport: session.sport ?? existing?.sport,
       );
     }

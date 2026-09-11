@@ -25,7 +25,9 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
 
   void _openRecordSessionScreen() {
     Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (context) => const RecordSessionScreen()),
+      MaterialPageRoute<void>(
+        builder: (context) => const RecordSessionScreen(),
+      ),
     );
   }
 

@@ -11,7 +11,7 @@ import '../../providers/record_session_controller.dart';
 import '../../providers/sport_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/duration_wheel_picker.dart';
-import '../../widgets/fade_slide_in.dart';
+import '../../widgets/motion.dart';
 import '../../widgets/sport_carousel.dart';
 import '../../widgets/xefi_backdrop.dart';
 
@@ -162,9 +162,10 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const FadeSlideIn(child: _FieldLabel('Sport')),
+                const ScaleIn(from: 0.96, child: _FieldLabel('Sport')),
                 const SizedBox(height: 8),
-                FadeSlideIn(
+                ScaleIn(
+                  from: 0.96,
                   delay: const Duration(milliseconds: 60),
                   child: SportCarousel(
                     key: ObjectKey(sports),
@@ -177,7 +178,8 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                FadeSlideIn(
+                ScaleIn(
+                  from: 0.96,
                   delay: const Duration(milliseconds: 140),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -204,7 +206,8 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                FadeSlideIn(
+                ScaleIn(
+                  from: 0.96,
                   delay: const Duration(milliseconds: 220),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -219,7 +222,8 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                FadeSlideIn(
+                ScaleIn(
+                  from: 0.96,
                   delay: const Duration(milliseconds: 300),
                   child: _SessionRecap(
                     sportName: _selectedSport?.name,

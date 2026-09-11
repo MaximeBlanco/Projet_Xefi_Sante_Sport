@@ -66,8 +66,7 @@ class WeeklyHealth {
 
   bool get isGoalReached => activeMinutes >= goalMinutes;
 
-  int get remainingMinutes =>
-      isGoalReached ? 0 : goalMinutes - activeMinutes;
+  int get remainingMinutes => isGoalReached ? 0 : goalMinutes - activeMinutes;
 
   int get activeDayCount =>
       minutesPerWeekday.where((minutes) => minutes > 0).length;

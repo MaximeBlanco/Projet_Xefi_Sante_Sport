@@ -19,5 +19,7 @@ final userSessionsProvider = FutureProvider<List<Session>>((ref) {
   if (signedInUser == null) {
     return Future<List<Session>>.value(const <Session>[]);
   }
-  return ref.watch(sessionRepositoryProvider).fetchUserSessions(signedInUser.id);
+  return ref
+      .watch(sessionRepositoryProvider)
+      .fetchUserSessions(signedInUser.id);
 });
