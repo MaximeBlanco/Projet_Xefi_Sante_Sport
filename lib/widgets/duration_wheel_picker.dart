@@ -51,12 +51,26 @@ class _DurationWheelPickerState extends State<DurationWheelPicker> {
     _alignWheel(_minutesController, _selectedMinutes);
   }
 
+  /// True while a wheel is being moved to match the parent rather than by a
+  /// finger, so the move is not reported back as a user change.
+  bool _isAligningToParent = false;
+
   /// Only moves a wheel the user is not already sitting on, so a value the
   /// parent echoes back does not fight the finger that produced it.
+  ///
+  /// jumpToItem notifies onSelectedItemChanged synchronously, and this runs
+  /// from didUpdateWidget — inside the build phase. Reporting it would call
+  /// setState on the parent mid-build, which the framework rejects outright.
   void _alignWheel(FixedExtentScrollController controller, int item) {
     if (!controller.hasClients) return;
     if (controller.selectedItem == item) return;
-    controller.jumpToItem(item);
+
+    _isAligningToParent = true;
+    try {
+      controller.jumpToItem(item);
+    } finally {
+      _isAligningToParent = false;
+    }
   }
 
   @override
@@ -67,12 +81,14 @@ class _DurationWheelPickerState extends State<DurationWheelPicker> {
   }
 
   void _changeHours(int hours) {
+    if (_isAligningToParent) return;
     widget.onDurationChanged(
       SessionDuration.fromHoursAndMinutes(hours, _selectedMinutes),
     );
   }
 
   void _changeMinutes(int minutes) {
+    if (_isAligningToParent) return;
     widget.onDurationChanged(
       SessionDuration.fromHoursAndMinutes(_selectedHours, minutes),
     );
