@@ -44,6 +44,13 @@ class SessionRepository {
     });
   }
 
+  /// The row is matched on its id alone: the delete policy already restricts
+  /// it to the caller's own sessions, and repeating the filter here would only
+  /// hide a mismatch behind a silent no-op.
+  Future<void> deleteSession(String sessionId) {
+    return _client.from('sessions').delete().eq('id', sessionId);
+  }
+
   String _formatAsPostgresDate(DateTime date) {
     final year = date.year.toString().padLeft(4, '0');
     final month = date.month.toString().padLeft(2, '0');

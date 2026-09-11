@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monapp/models/gps_point.dart';
@@ -73,6 +74,47 @@ void main() {
 
       expect(find.text('Aucun parcours enregistré'), findsOneWidget);
       expect(find.textContaining('Suivre le parcours'), findsNothing);
+    });
+
+    testWidgets('offers to delete the session', (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(child: SessionDetailScreen(session: buildSession())),
+      );
+      await tester.pump();
+
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    });
+
+    // Points are the session's duration, so a stray tap would move the user
+    // down the leaderboard with nothing asked.
+    testWidgets('asks before deleting and says what it costs', (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(child: SessionDetailScreen(session: buildSession())),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Supprimer la séance ?'), findsOneWidget);
+      expect(find.textContaining('classement'), findsOneWidget);
+      expect(find.text('Annuler'), findsOneWidget);
+    });
+
+    testWidgets('keeps the session when the confirmation is declined',
+        (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(child: SessionDetailScreen(session: buildSession())),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Annuler'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Supprimer la séance ?'), findsNothing);
+      expect(find.byType(SessionDetailScreen), findsOneWidget);
     });
   });
 }

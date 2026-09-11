@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/localization/app_locale.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/session.dart';
+import '../../providers/delete_session_controller.dart';
 import '../../widgets/route_map.dart';
 
 /// Shows the route of a tracked session. Reached by tapping a history tile,
 /// rather than embedding a map in every row: each map pulls its own tiles, and
 /// a list of them would hammer the OSM servers for something nobody is looking
 /// at yet.
-class SessionDetailScreen extends StatelessWidget {
+class SessionDetailScreen extends ConsumerWidget {
   const SessionDetailScreen({super.key, required this.session});
 
   final Session session;
@@ -23,17 +25,86 @@ class SessionDetailScreen extends StatelessWidget {
     }
   }
 
+  /// A session is the unit the score is built from, and deleting one silently
+  /// would change the user's rank without them asking twice.
+  Future<bool> _confirmDeletion(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer la séance ?'),
+        content: const Text(
+          'Elle disparaîtra de votre historique, et ses points seront retirés '
+          'de votre total et du classement.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    if (!await _confirmDeletion(context)) return;
+    if (!context.mounted) return;
+
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final wasDeleted = await ref
+        .read(deleteSessionControllerProvider.notifier)
+        .delete(session.id);
+
+    if (!context.mounted) return;
+
+    if (wasDeleted) {
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Séance supprimée')),
+      );
+      return;
+    }
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text('La suppression a échoué, réessayez.')),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final sport = session.sport;
     final route = session.route ?? const [];
     final distanceKm = session.distanceKm;
     final elevationGainM = session.elevationGainM;
     final caloriesBurned = session.caloriesBurned;
+    final isDeleting = ref.watch(deleteSessionControllerProvider).isLoading;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(sport == null ? 'Séance' : '${sport.emoji} ${sport.name}'),
+        actions: [
+          IconButton(
+            icon: isDeleting
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.white,
+                    ),
+                  )
+                : const Icon(Icons.delete_outline),
+            tooltip: 'Supprimer la séance',
+            onPressed: isDeleting ? null : () => _delete(context, ref),
+          ),
+        ],
       ),
       body: Column(
         children: [
