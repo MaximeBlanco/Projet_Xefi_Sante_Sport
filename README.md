@@ -239,6 +239,37 @@ for ($i = 0; $i -lt 20; $i++) {
 `geo fix`, donc le dénivelé reste à 0 en simulation. Le calcul lui-même est
 couvert par `test/core/route_metrics_test.dart`.
 
+## Lieux de séance (OpenStreetMap / Overpass)
+
+Le formulaire propose d'attacher un lieu à une séance : salle, complexe,
+gymnase, stade, terrain, piste, piscine ou parc. La liste vient de l'**API
+Overpass**, qui interroge les données OpenStreetMap — les mêmes que les fonds de
+carte déjà affichés. Aucune clé, aucun compte, contrairement à Google Places.
+
+C'est la deuxième API externe du projet, après celle des calories.
+
+Le lieu reste facultatif, et un champ libre permet de saisir un endroit
+qu'OpenStreetMap ne connaît pas. En base, `venue_osm_id` à `null` signifie
+exactement cela : saisi à la main. Pas de booléen en plus.
+
+Deux points qui méritent une explication :
+
+- **Overpass est un service public sous usage équitable.** La requête porte son
+  propre délai maximum, plafonne le nombre de résultats et cherche dans un rayon
+  fixe. La liste est lue une fois par ouverture du sélecteur, jamais à chaque
+  reconstruction de l'écran.
+- **Le vocabulaire d'OSM n'est pas le nôtre.** `VenueKind` traduit les tags
+  (`leisure`, `building`, `sport`) vers les catégories de l'app. Un changement de
+  convention chez OSM se corrige à cet endroit-là seulement, sans toucher ni la
+  base ni les écrans.
+
+Dans l'émulateur, la recherche se fait autour de la position simulée :
+
+```powershell
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb emu geo fix 4.8320 45.7578 170   # Lyon Bellecour
+```
+
 ## Auth en développement
 
 Supabase demande une confirmation d'email par défaut : juste après une

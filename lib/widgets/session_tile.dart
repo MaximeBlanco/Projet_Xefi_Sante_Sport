@@ -106,6 +106,15 @@ class SessionTile extends StatelessWidget {
                             icon: Icons.route_outlined,
                             label: '${distanceKm.toStringAsFixed(2)} km',
                           ),
+                        // Last, and on its own line when it has to be: a venue
+                        // name is the one value here that can be long, and
+                        // squeezing it next to the date truncated it to
+                        // "La bulle …".
+                        if (session.venue != null)
+                          _SessionMetric(
+                            icon: Icons.place_outlined,
+                            label: session.venue!.name,
+                          ),
                       ],
                     ),
                   ],

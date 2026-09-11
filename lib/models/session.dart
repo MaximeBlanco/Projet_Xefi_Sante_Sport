@@ -1,5 +1,6 @@
 import 'gps_point.dart';
 import 'sport.dart';
+import 'venue.dart';
 
 class Session {
   const Session({
@@ -16,6 +17,7 @@ class Session {
     this.elevationGainM,
     this.route,
     this.sport,
+    this.venue,
   });
 
   factory Session.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class Session {
       sport: embeddedSport is Map<String, dynamic>
           ? Sport.fromJson(embeddedSport)
           : null,
+      venue: Venue.fromSessionJson(json),
     );
   }
 
@@ -54,6 +57,7 @@ class Session {
   final List<GpsPoint>? route;
   final DateTime createdAt;
   final Sport? sport;
+  final Venue? venue;
 }
 
 /// PostgREST returns a numeric or bigint column either as a JSON number or as

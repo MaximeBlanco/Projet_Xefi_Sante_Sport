@@ -7,11 +7,13 @@ import 'package:intl/intl.dart';
 import '../../core/domain/session_duration.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/sport.dart';
+import '../../models/venue.dart';
 import '../../providers/record_session_controller.dart';
 import '../../providers/sport_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/duration_wheel_picker.dart';
 import '../../widgets/route_map.dart';
+import '../../widgets/venue_picker.dart';
 import 'track_route_screen.dart';
 
 class RecordSessionScreen extends ConsumerStatefulWidget {
@@ -33,6 +35,7 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
   DateTime _selectedDate = DateUtils.dateOnly(DateTime.now());
   String? _errorMessage;
   TrackedRoute? _trackedRoute;
+  Venue? _venue;
 
   String? get _durationError => SessionDuration.validationMessage(_durationMin);
 
@@ -103,6 +106,7 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
               route: trackedRoute?.route,
               distanceKm: trackedRoute?.distanceKm,
               elevationGainM: trackedRoute?.elevationGainM,
+              venue: _venue,
             );
 
     if (!mounted) return;
@@ -223,6 +227,12 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                     onDurationChanged: (durationMin) =>
                         setState(() => _durationMin = durationMin),
                   ),
+                ),
+                const SizedBox(height: 16),
+                VenuePicker(
+                  venue: _venue,
+                  enabled: !isSubmitting,
+                  onChanged: (venue) => setState(() => _venue = venue),
                 ),
                 const SizedBox(height: 16),
                 InkWell(

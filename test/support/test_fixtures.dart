@@ -4,6 +4,7 @@ import 'package:monapp/models/gps_point.dart';
 import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/models/session.dart';
 import 'package:monapp/models/sport.dart';
+import 'package:monapp/models/venue.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 Sport buildSport({
@@ -42,6 +43,7 @@ Session buildSession({
   List<GpsPoint>? route,
   DateTime? createdAt,
   Sport? sport,
+  Venue? venue,
   bool withEmbeddedSport = true,
 }) {
   return Session(
@@ -58,6 +60,7 @@ Session buildSession({
     route: route,
     createdAt: createdAt ?? DateTime(2026, 3, 14, 18, 30),
     sport: withEmbeddedSport ? (sport ?? buildSport(id: sportId)) : null,
+    venue: venue,
   );
 }
 

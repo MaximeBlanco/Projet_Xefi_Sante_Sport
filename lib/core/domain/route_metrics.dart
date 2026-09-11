@@ -44,15 +44,34 @@ abstract final class RouteMetrics {
     return gain;
   }
 
-  static double _haversineMeters(GpsPoint from, GpsPoint to) {
-    final deltaLat = _toRadians(to.lat - from.lat);
-    final deltaLng = _toRadians(to.lng - from.lng);
-    final fromLat = _toRadians(from.lat);
-    final toLat = _toRadians(to.lat);
+  /// Great-circle distance between two coordinates. Public because venue
+  /// search needs the same maths on plain latitudes and longitudes, and two
+  /// haversines in one codebase is one too many.
+  static double metersBetween({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) {
+    final deltaLat = _toRadians(toLat - fromLat);
+    final deltaLng = _toRadians(toLng - fromLng);
+    final fromLatRad = _toRadians(fromLat);
+    final toLatRad = _toRadians(toLat);
 
     final a = math.pow(math.sin(deltaLat / 2), 2) +
-        math.pow(math.sin(deltaLng / 2), 2) * math.cos(fromLat) * math.cos(toLat);
+        math.pow(math.sin(deltaLng / 2), 2) *
+            math.cos(fromLatRad) *
+            math.cos(toLatRad);
     return 2 * earthRadiusMeters * math.asin(math.min(1, math.sqrt(a)));
+  }
+
+  static double _haversineMeters(GpsPoint from, GpsPoint to) {
+    return metersBetween(
+      fromLat: from.lat,
+      fromLng: from.lng,
+      toLat: to.lat,
+      toLng: to.lng,
+    );
   }
 
   static double _toRadians(double degrees) => degrees * math.pi / 180;

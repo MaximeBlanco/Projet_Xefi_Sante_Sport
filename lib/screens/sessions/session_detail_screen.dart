@@ -123,6 +123,16 @@ class SessionDetailScreen extends ConsumerWidget {
                     _buildDateFormat().format(session.date),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
+                  if (session.venue != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      session.venue!.label,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.secondaryText,
+                          ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Wrap(
                     spacing: 32,

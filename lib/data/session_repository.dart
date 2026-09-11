@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 import '../models/gps_point.dart';
 import '../models/session.dart';
+import '../models/venue.dart';
 
 class SessionRepository {
   SessionRepository(this._client);
@@ -30,6 +31,7 @@ class SessionRepository {
     List<GpsPoint>? route,
     double? distanceKm,
     double? elevationGainM,
+    Venue? venue,
   }) {
     return _client.from('sessions').insert({
       'user_id': userId,
@@ -41,6 +43,7 @@ class SessionRepository {
       'route': route?.map((point) => point.toJson()).toList(),
       'distance_km': distanceKm,
       'elevation_gain_m': elevationGainM,
+      ...?venue?.toSessionColumns(),
     });
   }
 
