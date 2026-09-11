@@ -13,6 +13,7 @@ import '../../widgets/motion.dart';
 import '../../widgets/ranking_podium.dart';
 import '../../widgets/ranking_tile.dart';
 import '../../widgets/team_ranking_tile.dart';
+import 'team_detail_sheet.dart';
 
 /// The list sits on a wash rather than on white, so the white cards read as
 /// cards instead of dissolving into the page.
@@ -252,6 +253,11 @@ class _TeamLeaderboard extends StatelessWidget {
             entry: entry,
             leaderPoints: leaderPoints,
             isMyTeam: entry.teamId == profile?.teamId,
+            onTap: () => TeamDetailSheet.show(
+              context,
+              entry: entry,
+              myTeamId: profile?.teamId,
+            ),
           ),
         );
       },

@@ -16,6 +16,7 @@ class TeamRankingEntry {
     required this.sessionCount,
     this.currentRank,
     this.previousRank,
+    this.imageUrl,
   });
 
   factory TeamRankingEntry.fromJson(Map<String, dynamic> json) {
@@ -29,6 +30,7 @@ class TeamRankingEntry {
       sessionCount: _parseNumber(json['session_count'])?.toInt() ?? 0,
       currentRank: _parseNumber(json['current_rank'])?.toInt(),
       previousRank: _parseNumber(json['previous_rank'])?.toInt(),
+      imageUrl: json['image_url'] as String?,
     );
   }
 
@@ -39,6 +41,9 @@ class TeamRankingEntry {
   final int totalPoints;
   final int totalDurationMin;
   final int sessionCount;
+
+  /// The team photograph, or null while it has none and the colour stands in.
+  final String? imageUrl;
 
   /// Position in the team leaderboard, ties sharing a place.
   final int? currentRank;

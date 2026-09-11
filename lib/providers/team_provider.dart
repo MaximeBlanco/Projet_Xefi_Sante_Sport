@@ -6,6 +6,7 @@ import '../core/supabase/supabase_providers.dart';
 import '../data/team_repository.dart';
 import '../models/team.dart';
 import '../models/team_join_request.dart';
+import '../models/team_member.dart';
 import 'auth_provider.dart';
 import 'profile_editing_controller.dart';
 import 'profile_provider.dart';
@@ -54,6 +55,15 @@ final pendingJoinRequestsProvider = FutureProvider<List<TeamJoinRequest>>((
 ) async {
   if (ref.watch(currentUserProvider) == null) return const [];
   return ref.watch(teamRepositoryProvider).fetchRequestsToDecide();
+});
+
+/// The roster of one team, keyed on its id so opening a second team does not
+/// throw away the first.
+final teamMembersProvider = FutureProvider.family<List<TeamMember>, String>((
+  ref,
+  teamId,
+) {
+  return ref.watch(teamRepositoryProvider).fetchMembers(teamId: teamId);
 });
 
 /// Asking, withdrawing, deciding, leaving and creating, with the invalidations
@@ -123,6 +133,9 @@ class TeamMembershipController extends AutoDisposeAsyncNotifier<void> {
       ref.invalidate(myJoinRequestsProvider);
       ref.invalidate(pendingJoinRequestsProvider);
       ref.invalidate(teamRankingProvider);
+      // Every roster, not one: accepting somebody adds them to a team while
+      // removing them from whichever they were in.
+      ref.invalidate(teamMembersProvider);
 
       state = const AsyncValue<void>.data(null);
       return true;

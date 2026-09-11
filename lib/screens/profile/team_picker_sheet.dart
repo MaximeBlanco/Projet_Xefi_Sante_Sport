@@ -7,6 +7,7 @@ import '../../models/team_join_request.dart';
 import '../../providers/team_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/profile_avatar.dart';
+import '../../widgets/team_avatar.dart';
 
 /// Asking to join a team, creating one, leaving, and — if you own one —
 /// deciding who gets in.
@@ -348,10 +349,11 @@ class _TeamOption extends StatelessWidget {
             width: isCurrent ? 2 : 1,
           ),
         ),
-        leading: Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(color: team.colour, shape: BoxShape.circle),
+        leading: TeamAvatar(
+          name: team.name,
+          colour: team.colour,
+          imageUrl: team.imageUrl,
+          radius: 18,
         ),
         title: Text(
           team.name,

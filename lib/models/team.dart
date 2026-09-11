@@ -2,13 +2,19 @@ import 'package:flutter/material.dart';
 
 /// A team people can join, for the collective-sport leaderboard.
 class Team {
-  const Team({required this.id, required this.name, required this.colorValue});
+  const Team({
+    required this.id,
+    required this.name,
+    required this.colorValue,
+    this.imageUrl,
+  });
 
   factory Team.fromJson(Map<String, dynamic> json) {
     return Team(
       id: json['id'] as String,
       name: json['name'] as String,
       colorValue: _parseNumber(json['color_value'])?.toInt() ?? _fallbackColour,
+      imageUrl: json['image_url'] as String?,
     );
   }
 
@@ -42,6 +48,9 @@ class Team {
   final String id;
   final String name;
   final int colorValue;
+
+  /// The team photograph, or null while it has none and the colour stands in.
+  final String? imageUrl;
 
   Color get colour => Color(colorValue);
 }

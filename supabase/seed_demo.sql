@@ -26,18 +26,25 @@ begin;
 
 -- Signed 32-bit, the only form the integer column can hold; an opaque ARGB
 -- colour is above the signed maximum.
-create temporary table demo_teams (id uuid, name text, hex text) on commit drop;
+-- The team photographs are Lorem Picsum, which serves Unsplash pictures under
+-- the Unsplash licence and is free to use. Seeded rather than random so a team
+-- keeps the same face between runs. Same caveat as the portraits: fine for a
+-- demo, replace with the company's own before anything ships.
+create temporary table demo_teams (id uuid, name text, hex text, image text)
+  on commit drop;
 insert into demo_teams values
-  ('00000000-0000-0000-0000-0000000000d1', 'Les Rouges',   'FFE10600'),
-  ('00000000-0000-0000-0000-0000000000d2', 'Agence Lyon',  'FF0F6FA8'),
-  ('00000000-0000-0000-0000-0000000000d3', 'Agence Annecy','FF1B7F5C'),
-  ('00000000-0000-0000-0000-0000000000d4', 'Team Dev',     'FF7A3FA0'),
-  ('00000000-0000-0000-0000-0000000000d5', 'Les Chevaliers','FFC46A00');
+  ('00000000-0000-0000-0000-0000000000d1', 'Les Rouges',    'FFE10600', 'https://picsum.photos/seed/xefi-rouges/320'),
+  ('00000000-0000-0000-0000-0000000000d2', 'Agence Lyon',   'FF0F6FA8', 'https://picsum.photos/seed/xefi-lyon/320'),
+  ('00000000-0000-0000-0000-0000000000d3', 'Agence Annecy', 'FF1B7F5C', 'https://picsum.photos/seed/xefi-annecy/320'),
+  ('00000000-0000-0000-0000-0000000000d4', 'Team Dev',      'FF7A3FA0', 'https://picsum.photos/seed/xefi-dev/320'),
+  ('00000000-0000-0000-0000-0000000000d5', 'Les Chevaliers','FFC46A00', 'https://picsum.photos/seed/xefi-chevaliers/320');
 
-insert into teams (id, name, color_value)
-select id, name, ('x' || hex)::bit(32)::int from demo_teams
+insert into teams (id, name, color_value, image_url)
+select id, name, ('x' || hex)::bit(32)::int, image from demo_teams
 on conflict (id) do update
-  set name = excluded.name, color_value = excluded.color_value;
+  set name = excluded.name,
+      color_value = excluded.color_value,
+      image_url = excluded.image_url;
 
 -- The colleagues. Inserted through auth.users so the handle_new_user trigger
 -- creates their profile exactly as a real signup would.

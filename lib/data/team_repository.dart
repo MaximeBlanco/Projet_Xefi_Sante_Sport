@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/team.dart';
 import '../models/team_join_request.dart';
+import '../models/team_member.dart';
 
 class TeamRepository {
   TeamRepository(this._client);
@@ -94,5 +97,50 @@ class TeamRepository {
         .from('team_join_requests')
         .update({'status': accepted ? 'accepted' : 'declined'})
         .eq('id', requestId);
+  }
+
+  /// Who is in a team, best contributor first.
+  Future<List<TeamMember>> fetchMembers({required String teamId}) async {
+    final rows = await _client
+        .from('team_members')
+        .select()
+        .eq('team_id', teamId)
+        .order('total_points', ascending: false);
+    return rows.map(TeamMember.fromJson).toList();
+  }
+
+  /// Uploads the team photo and stores its public URL on the team.
+  ///
+  /// The object lives at a fixed path per team, so a team keeps exactly one
+  /// photo instead of accumulating every one ever chosen. That makes the URL
+  /// stable, which caches, so a version query parameter breaks it.
+  Future<String> uploadTeamImage({
+    required String teamId,
+    required File file,
+    required DateTime uploadedAt,
+  }) async {
+    final objectPath = '$teamId/logo${_extensionOf(file.path)}';
+
+    await _client.storage
+        .from(_logoBucket)
+        .upload(objectPath, file, fileOptions: const FileOptions(upsert: true));
+
+    final publicUrl = _client.storage.from(_logoBucket).getPublicUrl(objectPath);
+    final versionedUrl = '$publicUrl?v=${uploadedAt.millisecondsSinceEpoch}';
+
+    await _client
+        .from('teams')
+        .update({'image_url': versionedUrl})
+        .eq('id', teamId);
+
+    return versionedUrl;
+  }
+
+  static const _logoBucket = 'team-logos';
+
+  String _extensionOf(String path) {
+    final lastDot = path.lastIndexOf('.');
+    if (lastDot == -1 || lastDot == path.length - 1) return '.jpg';
+    return path.substring(lastDot).toLowerCase();
   }
 }
