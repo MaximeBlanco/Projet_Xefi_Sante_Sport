@@ -124,6 +124,31 @@ l'émulateur Android joint la machine hôte :
 }
 ```
 
+### Lancer dans le navigateur
+
+L'app tourne aussi en web, ce qui évite de démarrer un émulateur pour montrer
+l'interface. Un seul piège : `10.0.2.2` est l'alias de l'émulateur Android et
+ne veut rien dire pour un navigateur, qui doit viser `127.0.0.1` directement.
+D'où un second fichier de configuration, `dart_define.web.json` (ignoré par git
+comme l'autre) :
+
+```json
+{
+  "SUPABASE_URL": "http://127.0.0.1:54321",
+  "SUPABASE_ANON_KEY": "<PUBLISHABLE_KEY affichee par supabase start>"
+}
+```
+
+```
+flutter run -d chrome --web-port=8080 --dart-define-from-file=dart_define.web.json
+```
+
+Ce qui change par rapport au mobile : le suivi GPS passe par la géolocalisation
+du navigateur, donc pas de `adb emu geo fix` — Chrome permet de simuler une
+position dans DevTools (Sensors → Location), mais il n'envoie qu'un point fixe,
+ce qui ne trace pas de parcours. Pour démontrer le GPS, l'émulateur reste le bon
+support ; le web sert à montrer le reste de l'app.
+
 La stack locale sert aussi l'Edge Function. Pour avoir de vraies calories,
 copie `supabase/functions/.env.example` en `supabase/functions/.env` (ignoré
 par git), colle ta clé api-ninjas dedans, puis redémarre la stack :

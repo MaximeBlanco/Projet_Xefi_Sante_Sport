@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:cross_file/cross_file.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/profile.dart';
@@ -50,17 +49,26 @@ class ProfileRepository {
   /// avatar instead of accumulating every picture they ever picked. That makes
   /// the URL stable, which would serve a stale image from cache, so a version
   /// query parameter is appended to break it.
+  ///
+  /// The picture travels as bytes rather than as a `dart:io` file: the web
+  /// build has no filesystem, and an `XFile` is what the picker hands back on
+  /// every platform anyway.
   Future<String> uploadAvatar({
     required String userId,
-    required File file,
+    required XFile file,
     required DateTime uploadedAt,
   }) async {
-    final objectPath = '$userId/avatar${_extensionOf(file.path)}';
+    final objectPath = '$userId/avatar${_extensionOf(file.name)}';
 
-    await _client.storage.from(_avatarBucket).upload(
+    await _client.storage.from(_avatarBucket).uploadBinary(
           objectPath,
-          file,
-          fileOptions: const FileOptions(upsert: true),
+          await file.readAsBytes(),
+          fileOptions: FileOptions(
+            upsert: true,
+            // Storage guesses from the path otherwise, and a browser-picked
+            // file carries a blob URL with no extension to guess from.
+            contentType: file.mimeType,
+          ),
         );
 
     final publicUrl = _client.storage.from(_avatarBucket).getPublicUrl(
@@ -77,9 +85,9 @@ class ProfileRepository {
     return versionedUrl;
   }
 
-  String _extensionOf(String path) {
-    final lastDot = path.lastIndexOf('.');
-    if (lastDot == -1 || lastDot == path.length - 1) return '.jpg';
-    return path.substring(lastDot).toLowerCase();
+  String _extensionOf(String name) {
+    final lastDot = name.lastIndexOf('.');
+    if (lastDot == -1 || lastDot == name.length - 1) return '.jpg';
+    return name.substring(lastDot).toLowerCase();
   }
 }

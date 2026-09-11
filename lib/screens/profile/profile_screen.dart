@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -64,7 +62,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final succeeded = await ref
         .read(profileEditingControllerProvider.notifier)
-        .changeAvatar(File(picked.path), pickedAt: DateTime.now());
+        .changeAvatar(picked, pickedAt: DateTime.now());
     if (!mounted) return;
     _reportOutcome(succeeded, 'Photo de profil mise à jour');
   }

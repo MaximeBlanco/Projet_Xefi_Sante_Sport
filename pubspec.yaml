@@ -43,6 +43,9 @@ dependencies:
   supabase_flutter: ^2.17.2
   google_fonts: ^8.2.1
   image_picker: ^1.2.3
+  # The picker already pulls it in, but the repository layer takes an XFile
+  # without knowing a picker exists, so it depends on it in its own right.
+  cross_file: ^0.3.4
   flutter_svg: ^2.3.0
   geolocator: ^14.0.3
   flutter_map: ^8.3.2

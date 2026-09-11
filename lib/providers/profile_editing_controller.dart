@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_provider.dart';
@@ -41,7 +41,7 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
     });
   }
 
-  Future<bool> changeAvatar(File picture, {required DateTime pickedAt}) {
+  Future<bool> changeAvatar(XFile picture, {required DateTime pickedAt}) {
     return _run((userId) async {
       await ref.read(profileRepositoryProvider).uploadAvatar(
             userId: userId,
