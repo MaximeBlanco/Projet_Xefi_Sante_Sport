@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../profile/profile_screen.dart';
 import '../rankings/global_ranking_screen.dart';
 import 'home_dashboard_screen.dart';
 import '../sessions/record_session_screen.dart';
@@ -47,6 +48,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
       const HomeDashboardScreen(),
       const SessionHistoryScreen(),
       const GlobalRankingScreen(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(
@@ -71,6 +73,9 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
             )
           : null,
       bottomNavigationBar: BottomNavigationBar(
+        // Past three destinations the default turns into the shifting style,
+        // which drops the labels of every unselected tab.
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedTabIndex,
         onTap: (index) => setState(() => _selectedTabIndex = index),
         items: const [
@@ -86,6 +91,11 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.leaderboard),
             label: 'Classement',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profil',
           ),
         ],
       ),

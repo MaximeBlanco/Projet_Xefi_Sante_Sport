@@ -20,7 +20,7 @@ List<Override> buildEmptyDataOverrides() {
 
 void main() {
   group('HomeShellScreen', () {
-    testWidgets('exposes exactly the home, sessions and ranking tabs',
+    testWidgets('exposes the home, sessions, ranking and profile tabs',
         (tester) async {
       await tester.pumpWidget(
         buildTestApp(
@@ -34,11 +34,15 @@ void main() {
         find.byType(BottomNavigationBar),
       );
 
-      expect(bottomBar.items.length, 3);
+      expect(bottomBar.items.length, 4);
       expect(find.text('Accueil'), findsOneWidget);
       expect(find.text('Séances'), findsOneWidget);
       expect(find.text('Classement'), findsOneWidget);
+      expect(find.text('Profil'), findsOneWidget);
       expect(find.text('Contacts'), findsNothing);
+
+      // Beyond three destinations the default style hides unselected labels.
+      expect(bottomBar.type, BottomNavigationBarType.fixed);
     });
 
     testWidgets('opens on the home tab', (tester) async {

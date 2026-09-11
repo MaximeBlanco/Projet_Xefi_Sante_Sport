@@ -6,6 +6,7 @@ class RankingEntry {
     required this.totalDurationMin,
     required this.totalCaloriesBurned,
     required this.sessionCount,
+    this.avatarUrl,
   });
 
   factory RankingEntry.fromJson(Map<String, dynamic> json) {
@@ -17,6 +18,7 @@ class RankingEntry {
       totalCaloriesBurned:
           _parseNumber(json['total_calories_burned'])?.toDouble() ?? 0,
       sessionCount: _parseNumber(json['session_count'])?.toInt() ?? 0,
+      avatarUrl: json['avatar_url'] as String?,
     );
   }
 
@@ -26,6 +28,7 @@ class RankingEntry {
   final int totalDurationMin;
   final double totalCaloriesBurned;
   final int sessionCount;
+  final String? avatarUrl;
 }
 
 /// PostgREST returns a numeric or bigint column either as a JSON number or as

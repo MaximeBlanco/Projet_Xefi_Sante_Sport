@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
 import '../models/ranking_entry.dart';
+import 'profile_avatar.dart';
 
 class RankingTile extends StatelessWidget {
   const RankingTile({
@@ -33,7 +34,13 @@ class RankingTile extends StatelessWidget {
         child: Row(
           children: [
             _RankBadge(rank: rank, isCurrentUser: isCurrentUser),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
+            ProfileAvatar(
+              name: entry.name,
+              avatarUrl: entry.avatarUrl,
+              radius: 18,
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 entry.name,
