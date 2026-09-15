@@ -96,14 +96,25 @@ select
 from demo_people
 on conflict (provider_id, provider) do nothing;
 
--- The trigger created the profiles; the team and the avatar are ours to set.
-update profiles
-set team_id = demo_people.team_id,
-    name = demo_people.name,
-    avatar_url = 'https://api.dicebear.com/9.x/notionists/png?seed='
-      || demo_people.avatar_seed || '&backgroundColor=e10600,2b2d42,0f6fa8,1b7f5c'
+-- Written rather than updated in place. The trigger fills profiles on a fresh
+-- signup, so an update was enough as long as this ran on a database where the
+-- accounts had just been created. It does not hold when the accounts already
+-- exist and the schema was rebuilt under them: no trigger fires, the update
+-- matches nothing, and the sessions below then fail on the foreign key.
+insert into profiles (id, name, weight_kg, team_id, avatar_url)
+select
+  id,
+  name,
+  weight_kg,
+  team_id,
+  'https://api.dicebear.com/9.x/notionists/png?seed=' || avatar_seed
+    || '&backgroundColor=e10600,2b2d42,0f6fa8,1b7f5c'
 from demo_people
-where profiles.id = demo_people.id;
+on conflict (id) do update
+  set name = excluded.name,
+      weight_kg = excluded.weight_kg,
+      team_id = excluded.team_id,
+      avatar_url = excluded.avatar_url;
 
 -- Their history. Enough sessions, spread over the last five weeks, for the
 -- individual leaderboard to have a shape and for the six-month chart to have
