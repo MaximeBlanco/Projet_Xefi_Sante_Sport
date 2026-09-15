@@ -12,6 +12,7 @@ Session sessionOf({
   required String sportId,
   required int durationMin,
   double? caloriesBurned = 300,
+  double? distanceKm,
   DateTime? date,
 }) {
   return buildSession(
@@ -20,6 +21,7 @@ Session sessionOf({
     durationMin: durationMin,
     points: durationMin,
     caloriesBurned: caloriesBurned,
+    distanceKm: distanceKm,
     date: date,
     sport: buildSport(id: sportId, name: sportId, emoji: '🏃'),
   );
@@ -104,6 +106,34 @@ void main() {
       ], today);
 
       expect(stats.averageDurationMin, 15);
+    });
+
+    test('adds up the distance of the GPS-tracked sessions', () {
+      final stats = ProfileStats.fromSessions([
+        sessionOf(sportId: 'course', durationMin: 30, distanceKm: 5.2),
+        sessionOf(sportId: 'velo', durationMin: 60, distanceKm: 18.4),
+      ], today);
+
+      expect(stats.totalDistanceKm, closeTo(23.6, 0.001));
+    });
+
+    test('ignores the sessions that were never tracked', () {
+      final stats = ProfileStats.fromSessions([
+        sessionOf(sportId: 'course', durationMin: 30, distanceKm: 5.0),
+        sessionOf(sportId: 'natation', durationMin: 45),
+      ], today);
+
+      expect(stats.totalDistanceKm, 5.0);
+    });
+
+    // A month of swimming is not a month of zero kilometres, so the tile is
+    // left out rather than showing a distance nobody covered.
+    test('leaves the distance absent when nothing was tracked', () {
+      final stats = ProfileStats.fromSessions([
+        sessionOf(sportId: 'natation', durationMin: 45),
+      ], today);
+
+      expect(stats.totalDistanceKm, isNull);
     });
   });
 

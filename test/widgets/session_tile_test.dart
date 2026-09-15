@@ -1,5 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:monapp/core/domain/venue_kind.dart';
+import 'package:monapp/models/venue.dart';
 import 'package:monapp/widgets/session_tile.dart';
 
 import '../support/test_fixtures.dart';
@@ -37,6 +40,23 @@ void main() {
       expect(find.text(_emDashPlaceholder), findsNothing);
     });
 
+    testWidgets('marks a locally estimated value so it cannot pass for a '
+        'measured one', (tester) async {
+      await tester.pumpWidget(
+        buildTestAppWithScaffold(
+          child: SessionTile(
+            session: buildSession(
+              caloriesBurned: 367.5,
+              caloriesEstimated: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('≈ 368 kcal'), findsOneWidget);
+      expect(find.text('368 kcal'), findsNothing);
+    });
+
     testWidgets('shows the sport, the French date, the duration and the points',
         (tester) async {
       await tester.pumpWidget(
@@ -71,6 +91,35 @@ void main() {
       );
 
       expect(find.text('Sport inconnu'), findsOneWidget);
+    });
+
+    // Regression: the venue used to share the date's line under a maxLines of
+    // one, so "La bulle yoga" reached the history as "La bulle …".
+    testWidgets('shows the venue name in full', (tester) async {
+      await tester.pumpWidget(
+        buildTestAppWithScaffold(
+          child: SessionTile(
+            session: buildSession(
+              venue: const Venue(
+                name: 'La bulle yoga',
+                osmId: 'node/5475245725',
+                kind: VenueKind.fitnessCentre,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('La bulle yoga'), findsOneWidget);
+    });
+
+    testWidgets('shows no venue row for a session recorded without one',
+        (tester) async {
+      await tester.pumpWidget(
+        buildTestAppWithScaffold(child: SessionTile(session: buildSession())),
+      );
+
+      expect(find.byIcon(Icons.place_outlined), findsNothing);
     });
   });
 }

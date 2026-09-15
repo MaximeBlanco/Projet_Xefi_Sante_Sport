@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:monapp/models/gps_point.dart';
 import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/models/session.dart';
 import 'package:monapp/models/sport.dart';
 import 'package:monapp/models/team_ranking_entry.dart';
+import 'package:monapp/models/venue.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 Sport buildSport({
@@ -14,6 +16,7 @@ Sport buildSport({
   int? wgerId,
   bool isGpsTrackable = false,
   String? externalActivityName = 'running',
+  double met = 9.8,
 }) {
   return Sport(
     id: id,
@@ -23,6 +26,7 @@ Sport buildSport({
     wgerId: wgerId,
     isGpsTrackable: isGpsTrackable,
     externalActivityName: externalActivityName,
+    met: met,
   );
 }
 
@@ -34,8 +38,13 @@ Session buildSession({
   int durationMin = 45,
   int points = 45,
   double? caloriesBurned = 380.0,
+  bool caloriesEstimated = false,
+  double? distanceKm,
+  double? elevationGainM,
+  List<GpsPoint>? route,
   DateTime? createdAt,
   Sport? sport,
+  Venue? venue,
   bool withEmbeddedSport = true,
 }) {
   return Session(
@@ -46,8 +55,13 @@ Session buildSession({
     durationMin: durationMin,
     points: points,
     caloriesBurned: caloriesBurned,
+    caloriesEstimated: caloriesEstimated,
+    distanceKm: distanceKm,
+    elevationGainM: elevationGainM,
+    route: route,
     createdAt: createdAt ?? DateTime(2026, 3, 14, 18, 30),
     sport: withEmbeddedSport ? (sport ?? buildSport(id: sportId)) : null,
+    venue: venue,
   );
 }
 

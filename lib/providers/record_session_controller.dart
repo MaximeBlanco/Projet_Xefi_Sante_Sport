@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/gps_point.dart';
 import '../models/sport.dart';
+import '../models/venue.dart';
 import 'auth_provider.dart';
 import 'profile_provider.dart';
 import 'ranking_provider.dart';
@@ -23,6 +25,10 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
     required Sport sport,
     required DateTime date,
     required int durationMin,
+    List<GpsPoint>? route,
+    double? distanceKm,
+    double? elevationGainM,
+    Venue? venue,
   }) async {
     state = const AsyncValue<void>.loading();
     final keepAliveLink = ref.keepAlive();
@@ -36,16 +42,18 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
         return false;
       }
 
+      // No weight means neither the provider nor the MET formula has anything to
+      // work with, so the session is stored without calories rather than with a
+      // fabricated number.
       final weightKg = await _readCurrentProfileWeightKg();
-      final caloriesBurned = weightKg == null
+      final calories = weightKg == null
           ? null
-          : await ref
-                .read(caloriesServiceProvider)
-                .calculateCalories(
-                  activity: sport.externalActivityName ?? sport.name,
-                  weightKg: weightKg,
-                  durationMin: durationMin,
-                );
+          : await ref.read(caloriesServiceProvider).calculateCalories(
+              activity: sport.externalActivityName ?? sport.name,
+              weightKg: weightKg,
+              durationMin: durationMin,
+              met: sport.met,
+            );
 
       await ref
           .read(sessionRepositoryProvider)
@@ -54,7 +62,12 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
             sportId: sport.id,
             date: date,
             durationMin: durationMin,
-            caloriesBurned: caloriesBurned,
+            caloriesBurned: calories?.kcal,
+            caloriesEstimated: calories?.isLocalEstimate ?? false,
+            route: route,
+            distanceKm: distanceKm,
+            elevationGainM: elevationGainM,
+            venue: venue,
           );
 
       ref.invalidate(userSessionsProvider);

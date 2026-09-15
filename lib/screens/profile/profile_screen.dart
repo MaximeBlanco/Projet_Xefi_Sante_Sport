@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -69,7 +67,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final succeeded = await ref
         .read(profileEditingControllerProvider.notifier)
-        .changeAvatar(File(picked.path), pickedAt: DateTime.now());
+        .changeAvatar(picked, pickedAt: DateTime.now());
     if (!mounted) return;
     _reportOutcome(succeeded, 'Photo de profil mise à jour');
   }
@@ -760,6 +758,8 @@ class _PersonalRecords extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final totalDistanceKm = stats.totalDistanceKm;
+
     return Column(
       children: [
         // The two standing figures lead: they used to sit on the member card,
@@ -798,6 +798,14 @@ class _PersonalRecords extends StatelessWidget {
           label: 'Séance moyenne',
           value: SessionDuration.describeMinutes(stats.averageDurationMin),
         ),
+        // Absent rather than zero when nothing was GPS-tracked: a history of
+        // swimming is not a history of zero kilometres.
+        if (totalDistanceKm != null)
+          _RecordRow(
+            icon: Icons.route_outlined,
+            label: 'Distance parcourue',
+            value: '${totalDistanceKm.toStringAsFixed(1)} km',
+          ),
         _RecordRow(
           icon: Icons.local_fire_department_outlined,
           label: 'Calories brûlées',

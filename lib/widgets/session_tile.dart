@@ -22,7 +22,12 @@ DateFormat _buildSessionDateFormat() {
 final DateFormat _sessionDateFormat = _buildSessionDateFormat();
 
 class SessionTile extends StatelessWidget {
-  const SessionTile({super.key, required this.session, this.margin});
+  const SessionTile({
+    super.key,
+    required this.session,
+    this.margin,
+    this.onTap,
+  });
 
   final Session session;
 
@@ -30,14 +35,28 @@ class SessionTile extends StatelessWidget {
   /// passes [EdgeInsets.zero] rather than inheriting a second inset.
   final EdgeInsetsGeometry? margin;
 
+  final VoidCallback? onTap;
+
+  bool get _hasRoute => (session.route?.length ?? 0) > 1;
+
+  /// The "≈" marks a value the app worked out itself from the sport's MET
+  /// because the calories provider could not answer, so an estimate never
+  /// passes for a measured figure.
+  String get _caloriesLabel {
+    final caloriesBurned = session.caloriesBurned;
+    if (caloriesBurned == null) return _missingValuePlaceholder;
+    final rounded = '${caloriesBurned.round()} kcal';
+    return session.caloriesEstimated ? '≈ $rounded' : rounded;
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final caloriesBurned = session.caloriesBurned;
+    final distanceKm = session.distanceKm;
+    final venue = session.venue;
 
     return Container(
       margin: margin ?? const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
@@ -49,76 +68,137 @@ class SessionTile extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
+      clipBehavior: Clip.antiAlias,
+      // Transparent so the card keeps its own white and its shadow, and the ink
+      // still lands above that white instead of under it.
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _sessionDateFormat.format(session.date).toUpperCase(),
-                      style: textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        letterSpacing: 0.8,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.secondaryText.withValues(alpha: 0.65),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _sessionDateFormat
+                                .format(session.date)
+                                .toUpperCase(),
+                            style: textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              letterSpacing: 0.8,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondaryText.withValues(
+                                alpha: 0.65,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              if (session.sport != null) ...[
+                                Text(
+                                  session.sport!.emoji,
+                                  style: const TextStyle(fontSize: 18),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  session.sport?.name ?? _unknownSportName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.titleLarge?.copyWith(
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        if (session.sport != null) ...[
-                          Text(
-                            session.sport!.emoji,
-                            style: const TextStyle(fontSize: 18),
+                        _PointsPill(points: session.points),
+                        if (_hasRoute) ...[
+                          const SizedBox(height: 8),
+                          Icon(
+                            Icons.map_outlined,
+                            size: 18,
+                            color: AppColors.secondaryText.withValues(
+                              alpha: 0.65,
+                            ),
                           ),
-                          const SizedBox(width: 8),
                         ],
-                        Flexible(
-                          child: Text(
-                            session.sport?.name ?? _unknownSportName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.titleLarge?.copyWith(fontSize: 20),
-                          ),
-                        ),
                       ],
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              _PointsPill(points: session.points),
-            ],
+                const SizedBox(height: 14),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: AppColors.black.withValues(alpha: 0.06),
+                ),
+                const SizedBox(height: 14),
+                // Wrapped rather than a fixed row: a third metric appears only
+                // on GPS-tracked sessions, and three of them do not fit a
+                // narrow screen side by side.
+                Wrap(
+                  spacing: 28,
+                  runSpacing: 12,
+                  children: [
+                    _Metric(
+                      value: SessionDuration.describeMinutes(
+                        session.durationMin,
+                      ),
+                      label: 'Durée',
+                    ),
+                    _Metric(value: _caloriesLabel, label: 'Dépense'),
+                    if (distanceKm != null)
+                      _Metric(
+                        value: '${distanceKm.toStringAsFixed(2)} km',
+                        label: 'Distance',
+                      ),
+                  ],
+                ),
+                // On its own line: a venue name is the one value here that can
+                // be long, and beside the metrics it truncated to "La bulle …".
+                if (venue != null) ...[
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.place_outlined,
+                        size: 15,
+                        color: AppColors.secondaryText.withValues(alpha: 0.65),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          venue.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: AppColors.black.withValues(alpha: 0.06),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Metric(
-                value: SessionDuration.describeMinutes(session.durationMin),
-                label: 'Durée',
-              ),
-              const SizedBox(width: 28),
-              _Metric(
-                value: caloriesBurned == null
-                    ? _missingValuePlaceholder
-                    : '${caloriesBurned.round()} kcal',
-                label: 'Dépense',
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

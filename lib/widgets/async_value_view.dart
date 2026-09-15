@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,7 +26,10 @@ class AsyncValueView<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return value.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => _ErrorState(onRetry: onRetry),
+      error: (error, stackTrace) => _ErrorState(
+        onRetry: onRetry,
+        error: error,
+      ),
       data: (data) {
         if (isEmpty?.call(data) ?? false) {
           return _EmptyState(
@@ -39,9 +43,14 @@ class AsyncValueView<T> extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({this.onRetry});
+  const _ErrorState({this.onRetry, this.error});
 
   final VoidCallback? onRetry;
+
+  /// Shown only in debug builds. "Vérifie ta connexion" is the right thing to
+  /// tell a user and the wrong thing to tell a developer, who otherwise has to
+  /// go read the browser console to learn which query actually failed.
+  final Object? error;
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +75,16 @@ class _ErrorState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium,
             ),
+            if (kDebugMode && error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                '$error',
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall?.copyWith(
+                  color: AppColors.secondaryText,
+                ),
+              ),
+            ],
             if (onRetry != null) ...[
               const SizedBox(height: 12),
               TextButton(onPressed: onRetry, child: const Text('Réessayer')),

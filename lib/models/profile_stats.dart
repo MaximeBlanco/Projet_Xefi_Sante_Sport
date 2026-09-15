@@ -53,6 +53,7 @@ class ProfileStats {
     required this.monthDurationMin,
     required this.lastSixMonths,
     required this.bestWeekPoints,
+    this.totalDistanceKm,
     this.firstSessionDate,
   });
 
@@ -87,6 +88,7 @@ class ProfileStats {
     var monthSessionCount = 0;
     var monthPoints = 0;
     var monthDurationMin = 0;
+    double? totalDistanceKm;
     DateTime? firstSessionDate;
 
     final tallies = <String, SportTally>{};
@@ -105,6 +107,12 @@ class ProfileStats {
       totalDurationMin += session.durationMin;
       totalPoints += session.points;
       totalCaloriesBurned += session.caloriesBurned ?? 0;
+
+      final sessionDistance = session.distanceKm;
+      if (sessionDistance != null) {
+        totalDistanceKm = (totalDistanceKm ?? 0) + sessionDistance;
+      }
+
       if (session.durationMin > longestSessionMin) {
         longestSessionMin = session.durationMin;
       }
@@ -157,6 +165,7 @@ class ProfileStats {
       monthDurationMin: monthDurationMin,
       lastSixMonths: _chartMonths(monthStart, pointsByMonth),
       bestWeekPoints: pointsByWeek.values.fold(0, (a, b) => a > b ? a : b),
+      totalDistanceKm: totalDistanceKm,
       firstSessionDate: firstSessionDate,
     );
   }
@@ -221,6 +230,10 @@ class ProfileStats {
   final List<MonthlyPoints> lastSixMonths;
 
   final int bestWeekPoints;
+  /// Null rather than zero when no session of the period was GPS-tracked: a
+  /// month of swimming is not a month of zero kilometres.
+  final double? totalDistanceKm;
+
   final DateTime? firstSessionDate;
 
   bool get hasSessions => sessionCount > 0;

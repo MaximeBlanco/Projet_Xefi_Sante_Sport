@@ -14,10 +14,36 @@ et les conventions du projet.
 - Une clé gratuite [api-ninjas.com](https://api-ninjas.com/api/caloriesburned)
   (compte gratuit, sans carte bancaire) pour le calcul des calories
 
-## Configuration
+## Démarrage rapide
 
-L'app ne démarre pas sans les identifiants Supabase, passés via
-`--dart-define-from-file` pour ne jamais les committer.
+Il n'y a rien à configurer. L'app pointe par défaut sur un projet Supabase
+partagé, déjà migré et peuplé :
+
+```
+flutter pub get
+flutter run -d chrome
+```
+
+Les identifiants de ce projet vivent dans `lib/core/config/env.dart`. Les
+publier est volontaire — une clé `anon` est publique par nature, elle part de
+toute façon dans le bundle JavaScript de n'importe quelle app web Supabase, et
+ce qui protège les données est le row level security, activé sur chaque table.
+La clé `service_role`, elle, n'apparaît nulle part.
+
+### Comptes de démonstration
+
+La base partagée est peuplée par `supabase/seed_demo.sql` : des équipes, des
+collègues, leurs séances sur les dernières semaines et un calendrier
+d'événements. Tous les comptes ont le même mot de passe, **`DemoXefi!2026`** —
+par exemple `camille.roussel@demo.xefi.local` ou `yanis.chevalier@demo.xefi.local`.
+
+Ce sont des personnes inventées, sur un domaine `.local` qui ne peut pas
+recevoir de courrier, et leurs portraits sont générés, pas photographiés.
+
+## Configuration — pointer sur ton propre projet Supabase
+
+Pour travailler sur ta propre base plutôt que sur la base partagée, ces deux
+valeurs prennent le pas sur les valeurs par défaut :
 
 1. Copie `dart_define.example.json` en `dart_define.json` (déjà ignoré par
    git).
@@ -80,10 +106,26 @@ fonction y a accès.
    ```
 
 Si la fonction n'est pas déployée ou si l'API tombe, enregistrer une séance
-marche quand même : la séance est stockée sans calories et l'historique
-affiche un tiret plutôt qu'un faux `0`. Les points (= durée en minutes) et le
+marche quand même : l'app bascule sur la formule MET (voir ci-dessous) et
+l'historique préfixe la valeur d'un `≈`. Les points (= durée en minutes) et le
 classement ne dépendent pas de l'API. Le poids saisi à l'inscription sert au
-calcul : un profil sans poids ne déclenche pas l'appel.
+calcul : un profil sans poids ne déclenche ni l'appel ni l'estimation, et la
+séance est alors stockée sans calories (l'historique affiche un tiret).
+
+### Repli local quand l'API ne répond pas
+
+Chaque sport porte son MET (`sports.met`, valeurs du Compendium of Physical
+Activities). Dès que l'Edge Function échoue — API en panne, quota épuisé, ou
+tout simplement aucune clé configurée — l'app calcule elle-même :
+
+```
+kcal = MET x poids_kg x durée_heures
+```
+
+La séance stocke alors `calories_estimated = true`, et l'historique affiche
+`≈ 368 kcal` au lieu de `368 kcal` : une estimation locale ne doit jamais
+passer pour une valeur mesurée. C'est ce qui permet de faire une démo complète
+sans clé api-ninjas et sans réseau.
 
 ## Développement 100 % local (sans compte Supabase)
 
@@ -108,17 +150,69 @@ l'émulateur Android joint la machine hôte :
 }
 ```
 
+### Lancer dans le navigateur
+
+L'app tourne aussi en web, ce qui évite de démarrer un émulateur pour montrer
+l'interface. Un seul piège : `10.0.2.2` est l'alias de l'émulateur Android et
+ne veut rien dire pour un navigateur, qui doit viser `127.0.0.1` directement.
+D'où un second fichier de configuration, `dart_define.web.json` (ignoré par git
+comme l'autre) :
+
+```json
+{
+  "SUPABASE_URL": "http://127.0.0.1:54321",
+  "SUPABASE_ANON_KEY": "<PUBLISHABLE_KEY affichee par supabase start>"
+}
+```
+
+```
+flutter run -d chrome --web-port=8080 --dart-define-from-file=dart_define.web.json
+```
+
+Cette commande ouvre elle-même une fenêtre Chrome, et **fermer cet onglet arrête
+le serveur** : `flutter run` considère que l'application s'est terminée. Pour
+garder le serveur en vie et ouvrir l'URL dans le navigateur déjà ouvert, vise le
+device `web-server` plutôt que `chrome`, puis va sur http://127.0.0.1:8080 :
+
+```
+flutter run -d web-server --web-port=8080 --web-hostname=127.0.0.1 --dart-define-from-file=dart_define.web.json
+```
+
+Ce qui change par rapport au mobile : le suivi GPS passe par la géolocalisation
+du navigateur, donc pas de `adb emu geo fix` — Chrome permet de simuler une
+position dans DevTools (Sensors → Location), mais il n'envoie qu'un point fixe,
+ce qui ne trace pas de parcours. Pour démontrer le GPS, l'émulateur reste le bon
+support ; le web sert à montrer le reste de l'app.
+
 La stack locale sert aussi l'Edge Function. Pour avoir de vraies calories,
-mets ta clé api-ninjas dans `supabase/functions/.env` (fichier ignoré par git)
-puis redémarre :
+copie `supabase/functions/.env.example` en `supabase/functions/.env` (ignoré
+par git), colle ta clé api-ninjas dedans, puis redémarre la stack :
 
 ```
 CALORIES_API_KEY=<ta-cle>
 ```
 
-Sans cette clé la fonction répond « not configured », les séances sont
-enregistrées avec des calories nulles et l'historique affiche un tiret : rien
-d'autre n'est bloqué.
+```
+npx supabase stop && npx supabase start
+```
+
+Pour vérifier que l'appel externe aboutit vraiment, sans passer par l'app —
+c'est la commande à avoir sous la main en soutenance :
+
+```bash
+ANON=$(npx supabase status -o json | grep -o '"ANON_KEY": *"[^"]*"' | cut -d'"' -f4)
+curl -s -X POST http://127.0.0.1:54321/functions/v1/calculate-calories \
+  -H "Authorization: Bearer $ANON" -H "Content-Type: application/json" \
+  -d '{"activity":"cycling","weightKg":75,"durationMin":60}'
+```
+
+Une réponse `{"caloriesBurned":...}` prouve que la chaîne complète fonctionne :
+app → Edge Function → API externe. Un `{"error":"The calories provider is not
+configured."}` signifie que la clé n'est pas lue.
+
+Sans cette clé la fonction répond « not configured », et l'app retombe sur la
+formule MET : les séances gardent des calories, simplement préfixées d'un `≈`.
+Rien n'est bloqué.
 
 Commandes utiles : `npx supabase status` (URL et clés), `npx supabase stop`
 (arrêt, les données sont conservées), `npx supabase db reset` (rejoue les
@@ -128,6 +222,79 @@ migrations sur une base vide). Le Studio est sur http://127.0.0.1:54323.
 l'API 28. `android/app/src/debug/res/xml/network_security_config.xml` lève
 l'interdiction pour les seuls hôtes de loopback, et uniquement en build debug —
 la release reste sans cleartext.
+
+## Suivi GPS du parcours
+
+Sur un sport marqué `is_gps_trackable`, le formulaire propose « Suivre le
+parcours en direct » : l'app enregistre les positions, trace le parcours sur la
+carte, et à l'arrêt renvoie la durée, la distance et le dénivelé au formulaire.
+Les points bruts sont stockés dans `sessions.route` (jsonb), et l'historique
+affiche la carte au détail d'une séance.
+
+Les fonds de carte viennent d'**OpenStreetMap** via `flutter_map` : aucune clé,
+aucun compte de facturation, contrairement à Google Maps.
+
+Deux choix qui méritent une explication :
+
+- **Distance et dénivelé sont recalculés depuis les points**, jamais lus depuis
+  la vitesse ou l'odomètre du téléphone, qui dérivent. Un seuil ignore le bruit
+  GPS (5 m à l'horizontale, 3 m à la verticale) : sans lui, un téléphone posé
+  sur une table invente des centaines de mètres.
+- **Android lit le GPS via `LocationManager`**, pas via le fused provider de
+  Play Services (`forceLocationManager: true`). Fused est meilleur en intérieur,
+  mais cette fonctionnalité ne sert qu'en extérieur, où fused retombe de toute
+  façon sur le GPS brut — et surtout, le fused provider de l'émulateur ignore
+  `adb emu geo fix`, ce qui rendrait toute démo impossible.
+
+### Simuler un parcours dans l'émulateur
+
+L'émulateur ne bouge pas, mais on peut lui envoyer des positions. Démarre le
+suivi dans l'app, puis envoie une suite de points espacés de plus de 5 m :
+
+```powershell
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+$lat = 45.7500; $lng = 4.8500
+for ($i = 0; $i -lt 20; $i++) {
+  $lat += 0.00025; $lng += 0.00008
+  & $adb emu geo fix $lng.ToString("F6") $lat.ToString("F6") 170
+  Start-Sleep -Milliseconds 700
+}
+```
+
+À savoir : l'émulateur impose sa propre altitude et ignore celle passée à
+`geo fix`, donc le dénivelé reste à 0 en simulation. Le calcul lui-même est
+couvert par `test/core/route_metrics_test.dart`.
+
+## Lieux de séance (OpenStreetMap / Overpass)
+
+Le formulaire propose d'attacher un lieu à une séance : salle, complexe,
+gymnase, stade, terrain, piste, piscine ou parc. La liste vient de l'**API
+Overpass**, qui interroge les données OpenStreetMap — les mêmes que les fonds de
+carte déjà affichés. Aucune clé, aucun compte, contrairement à Google Places.
+
+C'est la deuxième API externe du projet, après celle des calories.
+
+Le lieu reste facultatif, et un champ libre permet de saisir un endroit
+qu'OpenStreetMap ne connaît pas. En base, `venue_osm_id` à `null` signifie
+exactement cela : saisi à la main. Pas de booléen en plus.
+
+Deux points qui méritent une explication :
+
+- **Overpass est un service public sous usage équitable.** La requête porte son
+  propre délai maximum, plafonne le nombre de résultats et cherche dans un rayon
+  fixe. La liste est lue une fois par ouverture du sélecteur, jamais à chaque
+  reconstruction de l'écran.
+- **Le vocabulaire d'OSM n'est pas le nôtre.** `VenueKind` traduit les tags
+  (`leisure`, `building`, `sport`) vers les catégories de l'app. Un changement de
+  convention chez OSM se corrige à cet endroit-là seulement, sans toucher ni la
+  base ni les écrans.
+
+Dans l'émulateur, la recherche se fait autour de la position simulée :
+
+```powershell
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb emu geo fix 4.8320 45.7578 170   # Lyon Bellecour
+```
 
 ## Auth en développement
 
@@ -147,8 +314,13 @@ Miroir de la definition of done (cahier des charges, section 6) :
   molettes heures/minutes (la base ne stocke que des minutes), date
   (les dates futures sont refusées).
 - Calories réelles issues de la Calories Burned API via l'Edge Function,
-  stockées avec la séance.
-- Historique personnel des séances, de la plus récente à la plus ancienne.
+  stockées avec la séance, avec repli sur la formule MET (préfixe `≈`) quand
+  l'API ne répond pas.
+- Suivi GPS du parcours pour les sports marqués `is_gps_trackable` (course,
+  vélo, marche) : tracé en direct sur une carte, distance et dénivelé calculés,
+  durée pré-remplie à l'arrêt. Voir ci-dessous.
+- Historique personnel des séances, de la plus récente à la plus ancienne, avec
+  la carte du parcours au détail d'une séance qui en a un.
 - Classement global par points décroissants (`points = duration_min`, calculé
   côté base), avec le rang de l'utilisateur connecté mis en avant.
 - Charte XEFI respectée : couleurs et Montserrat centralisés dans

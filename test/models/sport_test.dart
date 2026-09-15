@@ -12,6 +12,7 @@ void main() {
         'wger_id': 42,
         'is_gps_trackable': true,
         'external_activity_name': 'running',
+        'met': 9.8,
       });
 
       expect(sport.id, 'sport-running');
@@ -21,6 +22,7 @@ void main() {
       expect(sport.wgerId, 42);
       expect(sport.isGpsTrackable, isTrue);
       expect(sport.externalActivityName, 'running');
+      expect(sport.met, 9.8);
     });
 
     test('accepts integer columns serialized as strings', () {
@@ -32,10 +34,12 @@ void main() {
         'wger_id': '7',
         'is_gps_trackable': false,
         'external_activity_name': 'swimming',
+        'met': '8.0',
       });
 
       expect(sport.pointsPerUnit, 3);
       expect(sport.wgerId, 7);
+      expect(sport.met, 8.0);
     });
 
     test('falls back when the optional columns are null or absent', () {
@@ -52,6 +56,17 @@ void main() {
       expect(sport.wgerId, isNull);
       expect(sport.isGpsTrackable, isFalse);
       expect(sport.externalActivityName, isNull);
+    });
+
+    test('falls back to the default MET so calories can still be estimated', () {
+      final sport = Sport.fromJson(<String, dynamic>{
+        'id': 'sport-unknown',
+        'name': 'Sport ajouté après coup',
+        'emoji': '🏅',
+        'points_per_unit': 1,
+      });
+
+      expect(sport.met, Sport.defaultMet);
     });
   });
 }

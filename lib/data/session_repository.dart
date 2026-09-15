@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
+import '../models/gps_point.dart';
 import '../models/session.dart';
+import '../models/venue.dart';
 
 class SessionRepository {
   SessionRepository(this._client);
@@ -25,6 +27,11 @@ class SessionRepository {
     required DateTime date,
     required int durationMin,
     double? caloriesBurned,
+    bool caloriesEstimated = false,
+    List<GpsPoint>? route,
+    double? distanceKm,
+    double? elevationGainM,
+    Venue? venue,
   }) {
     return _client.from('sessions').insert({
       'user_id': userId,
@@ -32,7 +39,19 @@ class SessionRepository {
       'date': _formatAsPostgresDate(date),
       'duration_min': durationMin,
       'calories_burned': caloriesBurned,
+      'calories_estimated': caloriesEstimated,
+      'route': route?.map((point) => point.toJson()).toList(),
+      'distance_km': distanceKm,
+      'elevation_gain_m': elevationGainM,
+      ...?venue?.toSessionColumns(),
     });
+  }
+
+  /// The row is matched on its id alone: the delete policy already restricts
+  /// it to the caller's own sessions, and repeating the filter here would only
+  /// hide a mismatch behind a silent no-op.
+  Future<void> deleteSession(String sessionId) {
+    return _client.from('sessions').delete().eq('id', sessionId);
   }
 
   String _formatAsPostgresDate(DateTime date) {

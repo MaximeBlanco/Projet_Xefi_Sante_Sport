@@ -75,14 +75,46 @@ select
 from demo_people
 on conflict (id) do nothing;
 
--- The trigger created the profiles; the team and the avatar are ours to set.
-update profiles
-set team_id = demo_people.team_id,
-    name = demo_people.name,
-    avatar_url = 'https://api.dicebear.com/9.x/notionists/png?seed='
-      || demo_people.avatar_seed || '&backgroundColor=e10600,2b2d42,0f6fa8,1b7f5c'
+-- A password login is resolved through auth.identities, not auth.users. Without
+-- this row the account exists, the hash is correct, and signing in still answers
+-- "Invalid login credentials" — which is how every demo account was unusable.
+insert into auth.identities (
+  user_id, provider_id, provider, identity_data,
+  last_sign_in_at, created_at, updated_at
+)
+select
+  id,
+  id::text,
+  'email',
+  jsonb_build_object(
+    'sub', id::text,
+    'email', email,
+    'email_verified', true,
+    'phone_verified', false
+  ),
+  now(), now(), now()
 from demo_people
-where profiles.id = demo_people.id;
+on conflict (provider_id, provider) do nothing;
+
+-- Written rather than updated in place. The trigger fills profiles on a fresh
+-- signup, so an update was enough as long as this ran on a database where the
+-- accounts had just been created. It does not hold when the accounts already
+-- exist and the schema was rebuilt under them: no trigger fires, the update
+-- matches nothing, and the sessions below then fail on the foreign key.
+insert into profiles (id, name, weight_kg, team_id, avatar_url)
+select
+  id,
+  name,
+  weight_kg,
+  team_id,
+  'https://api.dicebear.com/9.x/notionists/png?seed=' || avatar_seed
+    || '&backgroundColor=e10600,2b2d42,0f6fa8,1b7f5c'
+from demo_people
+on conflict (id) do update
+  set name = excluded.name,
+      weight_kg = excluded.weight_kg,
+      team_id = excluded.team_id,
+      avatar_url = excluded.avatar_url;
 
 -- Their history. Enough sessions, spread over the last five weeks, for the
 -- individual leaderboard to have a shape and for the six-month chart to have
@@ -196,5 +228,95 @@ values
     '00000000-0000-0000-0000-0000000000d1',
     '00000000-0000-0000-0000-0000000000d4'
   );
+
+
+-- Everything this lot adds has to be visible in the demo, or none of it is
+-- actually demonstrated: a route on the GPS sports, a venue on the sessions
+-- that have one, and a calorie figure the app worked out from the sport's MET
+-- rather than measured, which is what the "≈" on a tile marks.
+
+-- A loop drawn around the Parc de la Tête d'Or, sized from the duration so the
+-- track agrees with the session instead of contradicting it. Roughly 9 km/h on
+-- foot and 21 km/h on a bike.
+update sessions
+set distance_km = round(
+      (sessions.duration_min
+        * case when sports.name = 'Vélo' then 0.35 else 0.15 end)::numeric,
+      2
+    ),
+    elevation_gain_m = 12 + (sessions.duration_min % 7) * 9,
+    route = (
+      select jsonb_agg(
+               jsonb_build_object(
+                 'lat', round((45.7797 + 0.0045 * sin(point.n * 0.449))::numeric, 6),
+                 'lng', round((4.8554 + 0.0062 * cos(point.n * 0.449))::numeric, 6),
+                 'altitude', round((168 + 6 * sin(point.n * 0.9))::numeric, 1),
+                 'timestampMs',
+                 (extract(epoch from sessions.date::timestamp) * 1000)::bigint
+                   + point.n * (sessions.duration_min * 60000 / 13)
+               )
+               order by point.n
+             )
+      from generate_series(0, 13) as point(n)
+    )
+from sports
+where sports.id = sessions.sport_id
+  and sports.is_gps_trackable
+  and sessions.id >= '00000000-0000-0000-0000-000000005000'
+  and sessions.id <= '00000000-0000-0000-0000-000000005fff';
+
+-- Where people actually train.
+--
+-- Keyed on the sport, not on the session id: paired at random, the demo read
+-- as basket-ball at the swimming pool, which is worse than no venue at all.
+-- Cleared first so a re-run repairs a wrong pairing rather than keeping it.
+update sessions
+set venue_name = null, venue_kind = null, venue_osm_id = null
+where sessions.id >= '00000000-0000-0000-0000-000000005000'
+  and sessions.id <= '00000000-0000-0000-0000-000000005fff';
+
+-- The last hex digit decides only *whether* a session has a venue, so roughly
+-- seven in sixteen keep none: a venue is optional, and the tile has to be right
+-- when it is missing too.
+update sessions
+set venue_name = venues.name,
+    venue_kind = venues.kind,
+    venue_osm_id = venues.osm_id
+from sports, (
+  values
+    ('Football',      'Stade de Gerland',           'stadium',        'way/26112345'),
+    ('Basket-ball',   'Gymnase Bellecour',          'sports_centre',  'way/41882201'),
+    ('Natation',      'Piscine du Rhône',           'swimming_pool',  'way/30551824'),
+    ('Musculation',   'Salle de sport, siège XEFI', 'fitness_centre', 'node/9911223'),
+    ('Rameur',        'Salle de sport, siège XEFI', 'fitness_centre', 'node/9911223'),
+    ('Course à pied', 'Parc de la Tête d''Or',      'park',           'way/23107135'),
+    ('Marche',        'Parc de la Tête d''Or',      'park',           'way/23107135'),
+    ('Vélo',          'Berges du Rhône',            'track',          'way/55120987'),
+    ('Tennis',        'Tennis Club de Lyon',        'pitch',          'way/38221100')
+) as venues(sport_name, name, kind, osm_id)
+where sports.id = sessions.sport_id
+  and sports.name = venues.sport_name
+  and right(sessions.id::text, 1) in ('0', '1', '2', '4', '6', '8', 'b')
+  and sessions.id >= '00000000-0000-0000-0000-000000005000'
+  and sessions.id <= '00000000-0000-0000-0000-000000005fff';
+
+-- The MET fallback, which is the whole point of keeping calories when the
+-- external API cannot answer. Three of every sixteen sessions are left without
+-- any figure, so the honest dash the history shows for an unknown value is
+-- demonstrated as well.
+update sessions
+set calories_burned = round(
+      (sports.met * profiles.weight_kg * sessions.duration_min / 60.0)::numeric,
+      0
+    ),
+    calories_estimated = true
+from sports, profiles
+where sports.id = sessions.sport_id
+  and profiles.id = sessions.user_id
+  and profiles.weight_kg is not null
+  and right(sessions.id::text, 1) not in ('3', '7', 'e')
+  and sessions.id >= '00000000-0000-0000-0000-000000005000'
+  and sessions.id <= '00000000-0000-0000-0000-000000005fff';
+
 
 commit;

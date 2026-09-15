@@ -3,22 +3,34 @@ import 'dart:developer' as developer;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// How many calories a session burned, and whether that number came from the
+/// external provider or from the local MET formula.
+class CaloriesEstimate {
+  const CaloriesEstimate({required this.kcal, required this.isLocalEstimate});
+
+  final double kcal;
+  final bool isLocalEstimate;
+}
+
 /// Wraps the "calculate-calories" Edge Function, which is the project's
 /// third-party integration (Calories Burned API).
 ///
-/// Every failure degrades to null instead of an exception: an outage of the
-/// external API must cost the calories of a session, never the session itself.
+/// Every failure falls back to the MET formula instead of propagating: an
+/// outage of the external API, or a stack running without an API key at all,
+/// must cost the accuracy of the calories, never the session itself.
 class CaloriesService {
   CaloriesService(this._client);
 
   static const String _functionName = 'calculate-calories';
+  static const int _minutesPerHour = 60;
 
   final SupabaseClient _client;
 
-  Future<double?> calculateCalories({
+  Future<CaloriesEstimate> calculateCalories({
     required String activity,
     required double weightKg,
     required int durationMin,
+    required double met,
   }) async {
     try {
       final response = await _client.functions.invoke(
@@ -29,15 +41,38 @@ class CaloriesService {
           'durationMin': durationMin,
         },
       );
-      return _extractCaloriesBurned(response.data);
+      final caloriesBurned = _extractCaloriesBurned(response.data);
+      if (caloriesBurned != null) {
+        return CaloriesEstimate(kcal: caloriesBurned, isLocalEstimate: false);
+      }
+      developer.log(
+        'Calories provider answered without a usable value',
+        name: 'CaloriesService',
+      );
     } catch (error) {
       developer.log(
-        'Calories calculation unavailable',
+        'Calories provider unavailable, falling back to the MET formula',
         name: 'CaloriesService',
         error: error,
       );
-      return null;
     }
+
+    return CaloriesEstimate(
+      kcal: _estimateFromMet(
+        met: met,
+        weightKg: weightKg,
+        durationMin: durationMin,
+      ),
+      isLocalEstimate: true,
+    );
+  }
+
+  double _estimateFromMet({
+    required double met,
+    required double weightKg,
+    required int durationMin,
+  }) {
+    return met * weightKg * (durationMin / _minutesPerHour);
   }
 
   double? _extractCaloriesBurned(Object? payload) {

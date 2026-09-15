@@ -7,13 +7,17 @@ import 'package:intl/intl.dart';
 import '../../core/domain/session_duration.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/sport.dart';
+import '../../models/venue.dart';
 import '../../providers/record_session_controller.dart';
 import '../../providers/sport_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/duration_wheel_picker.dart';
 import '../../widgets/motion.dart';
+import '../../widgets/route_map.dart';
 import '../../widgets/sport_carousel.dart';
+import '../../widgets/venue_picker.dart';
 import '../../widgets/xefi_backdrop.dart';
+import 'track_route_screen.dart';
 
 /// Matches the floating label an InputDecorator gives the other fields, so the
 /// carousel does not look like it belongs to a different form.
@@ -50,8 +54,33 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
   int _durationMin = SessionDuration.defaultMinutes;
   DateTime _selectedDate = DateUtils.dateOnly(DateTime.now());
   String? _errorMessage;
+  TrackedRoute? _trackedRoute;
+  Venue? _venue;
 
   String? get _durationError => SessionDuration.validationMessage(_durationMin);
+
+  /// A tracked route belongs to the sport it was recorded for, so switching
+  /// sports drops it rather than attaching a bike ride to a swim.
+  void _selectSport(Sport sport) {
+    setState(() {
+      _selectedSport = sport;
+      if (!sport.isGpsTrackable) {
+        _trackedRoute = null;
+      }
+    });
+  }
+
+  Future<void> _trackRoute(Sport sport) async {
+    final trackedRoute = await Navigator.of(context).push<TrackedRoute>(
+      MaterialPageRoute(builder: (_) => TrackRouteScreen(sport: sport)),
+    );
+
+    if (trackedRoute == null || !mounted) return;
+    setState(() {
+      _trackedRoute = trackedRoute;
+      _durationMin = trackedRoute.durationMin;
+    });
+  }
 
   Future<void> _pickDate() async {
     final today = DateUtils.dateOnly(DateTime.now());
@@ -88,12 +117,17 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _errorMessage = null);
 
+    final trackedRoute = _trackedRoute;
     final wasRecorded = await ref
         .read(recordSessionControllerProvider.notifier)
         .submit(
           sport: selectedSport,
           date: _selectedDate,
           durationMin: _durationMin,
+          route: trackedRoute?.route,
+          distanceKm: trackedRoute?.distanceKm,
+          elevationGainM: trackedRoute?.elevationGainM,
+          venue: _venue,
         );
 
     if (!mounted) return;
@@ -173,10 +207,22 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                     enabled: !isSubmitting,
                     onSportSelected: (sport) {
                       if (sport.id == _selectedSport?.id) return;
-                      setState(() => _selectedSport = sport);
+                      _selectSport(sport);
                     },
                   ),
                 ),
+                if (_selectedSport?.isGpsTrackable ?? false) ...[
+                  const SizedBox(height: 20),
+                  ScaleIn(
+                    from: 0.96,
+                    delay: const Duration(milliseconds: 100),
+                    child: _RouteSection(
+                      trackedRoute: _trackedRoute,
+                      enabled: !isSubmitting,
+                      onTrack: () => _trackRoute(_selectedSport!),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 28),
                 ScaleIn(
                   from: 0.96,
@@ -219,6 +265,16 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                         onTap: isSubmitting ? null : _pickDate,
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ScaleIn(
+                  from: 0.96,
+                  delay: const Duration(milliseconds: 260),
+                  child: VenuePicker(
+                    venue: _venue,
+                    enabled: !isSubmitting,
+                    onChanged: (venue) => setState(() => _venue = venue),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -365,6 +421,59 @@ class _SessionRecap extends StatelessWidget {
           Text(
             'pts',
             style: textTheme.bodyMedium?.copyWith(color: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Offered only for the sports the catalogue marks as GPS-trackable, so a
+/// swimmer is never asked to record a route.
+class _RouteSection extends StatelessWidget {
+  const _RouteSection({
+    required this.trackedRoute,
+    required this.enabled,
+    required this.onTrack,
+  });
+
+  final TrackedRoute? trackedRoute;
+  final bool enabled;
+  final VoidCallback onTrack;
+
+  @override
+  Widget build(BuildContext context) {
+    final trackedRoute = this.trackedRoute;
+
+    if (trackedRoute == null) {
+      return OutlinedButton.icon(
+        onPressed: enabled ? onTrack : null,
+        icon: const Icon(Icons.my_location),
+        label: const Text('Suivre le parcours en direct'),
+      );
+    }
+
+    return InputDecorator(
+      decoration: const InputDecoration(labelText: 'Parcours'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              height: 160,
+              child: RouteMap(route: trackedRoute.route, interactive: false),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${trackedRoute.distanceKm.toStringAsFixed(2)} km · '
+            '${trackedRoute.elevationGainM.round()} m D+',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          TextButton(
+            onPressed: enabled ? onTrack : null,
+            child: const Text('Refaire le parcours'),
           ),
         ],
       ),

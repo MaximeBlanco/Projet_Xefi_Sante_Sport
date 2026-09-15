@@ -7,6 +7,7 @@ import '../../providers/session_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/motion.dart';
 import '../../widgets/session_tile.dart';
+import 'session_detail_screen.dart';
 
 const _ground = Color(0xFFF4F4F6);
 const _timelineColumnWidth = 34.0;
@@ -85,7 +86,15 @@ class _SessionHistoryScreenState extends ConsumerState<SessionHistoryScreen> {
                       child: _TimelineEntry(
                         isFirst: index == 0,
                         isLast: index == filtered.length - 1,
-                        child: SessionTile(session: filtered[index]),
+                        child: SessionTile(
+                          session: filtered[index],
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  SessionDetailScreen(session: filtered[index]),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),

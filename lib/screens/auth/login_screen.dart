@@ -3,12 +3,23 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/localization/auth_error_messages.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/motion.dart';
 import '../../widgets/xefi_backdrop.dart';
 import '../../widgets/xefi_logo.dart';
 import 'sign_up_screen.dart';
+
+/// A populated demo account, spelled out on the screen rather than left in the
+/// README. The repository is public and read by people who have no account, and
+/// for them the login form is otherwise a wall with nothing behind it.
+///
+/// These open nothing private: the colleague is invented, the address is on a
+/// domain that cannot receive mail, and row level security still decides what
+/// the session may read once signed in.
+const String _demoAccountEmail = 'camille.roussel@demo.xefi.local';
+const String _demoAccountPassword = 'DemoXefi!2026';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -23,6 +34,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isSubmitting = false;
   String? _errorMessage;
+
+  void _fillDemoAccount() {
+    setState(() {
+      _emailController.text = _demoAccountEmail;
+      _passwordController.text = _demoAccountPassword;
+      _errorMessage = null;
+    });
+  }
 
   @override
   void dispose() {
@@ -47,7 +66,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             password: _passwordController.text,
           );
     } on AuthException catch (error) {
-      if (mounted) setState(() => _errorMessage = error.message);
+      if (mounted) {
+        setState(() => _errorMessage = describeAuthException(error));
+      }
     } catch (error) {
       // gotrue only wraps what it recognises: a timeout, a malformed 2xx body or a
       // failure in the session listener escapes as something else, and without this
@@ -148,6 +169,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                           child: const Text('Créer un compte'),
                         ),
+                        const SizedBox(height: 28),
+                        _DemoAccountCard(
+                          onFill: _isSubmitting ? null : _fillDemoAccount,
+                        ),
                       ],
                     ),
                   ),
@@ -156,6 +181,70 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DemoAccountCard extends StatelessWidget {
+  const _DemoAccountCard({required this.onFill});
+
+  final VoidCallback? onFill;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final labelStyle = textTheme.bodySmall?.copyWith(
+      fontSize: 11,
+      letterSpacing: 0.8,
+      fontWeight: FontWeight.w600,
+      color: AppColors.secondaryText.withValues(alpha: 0.75),
+    );
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      decoration: BoxDecoration(
+        color: AppColors.white.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.black.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('COMPTE DE DÉMONSTRATION', style: labelStyle),
+          const SizedBox(height: 10),
+          // Selectable so the address can be copied rather than retyped, which
+          // on a phone keyboard is where a demo login usually goes wrong.
+          SelectableText(
+            _demoAccountEmail,
+            style: textTheme.bodyMedium?.copyWith(
+              color: AppColors.black,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          SelectableText(
+            _demoAccountPassword,
+            style: textTheme.bodyMedium?.copyWith(
+              color: AppColors.black,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Séances, parcours GPS, lieux et classement déjà remplis.',
+            style: textTheme.bodySmall?.copyWith(
+              color: AppColors.secondaryText,
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: onFill,
+              child: const Text('Remplir'),
+            ),
+          ),
+        ],
       ),
     );
   }
