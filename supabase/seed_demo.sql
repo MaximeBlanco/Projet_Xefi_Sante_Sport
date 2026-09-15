@@ -75,6 +75,27 @@ select
 from demo_people
 on conflict (id) do nothing;
 
+-- A password login is resolved through auth.identities, not auth.users. Without
+-- this row the account exists, the hash is correct, and signing in still answers
+-- "Invalid login credentials" — which is how every demo account was unusable.
+insert into auth.identities (
+  user_id, provider_id, provider, identity_data,
+  last_sign_in_at, created_at, updated_at
+)
+select
+  id,
+  id::text,
+  'email',
+  jsonb_build_object(
+    'sub', id::text,
+    'email', email,
+    'email_verified', true,
+    'phone_verified', false
+  ),
+  now(), now(), now()
+from demo_people
+on conflict (provider_id, provider) do nothing;
+
 -- The trigger created the profiles; the team and the avatar are ours to set.
 update profiles
 set team_id = demo_people.team_id,

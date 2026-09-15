@@ -14,10 +14,36 @@ et les conventions du projet.
 - Une clé gratuite [api-ninjas.com](https://api-ninjas.com/api/caloriesburned)
   (compte gratuit, sans carte bancaire) pour le calcul des calories
 
-## Configuration
+## Démarrage rapide
 
-L'app ne démarre pas sans les identifiants Supabase, passés via
-`--dart-define-from-file` pour ne jamais les committer.
+Il n'y a rien à configurer. L'app pointe par défaut sur un projet Supabase
+partagé, déjà migré et peuplé :
+
+```
+flutter pub get
+flutter run -d chrome
+```
+
+Les identifiants de ce projet vivent dans `lib/core/config/env.dart`. Les
+publier est volontaire — une clé `anon` est publique par nature, elle part de
+toute façon dans le bundle JavaScript de n'importe quelle app web Supabase, et
+ce qui protège les données est le row level security, activé sur chaque table.
+La clé `service_role`, elle, n'apparaît nulle part.
+
+### Comptes de démonstration
+
+La base partagée est peuplée par `supabase/seed_demo.sql` : des équipes, des
+collègues, leurs séances sur les dernières semaines et un calendrier
+d'événements. Tous les comptes ont le même mot de passe, **`DemoXefi!2026`** —
+par exemple `camille.roussel@demo.xefi.local` ou `yanis.chevalier@demo.xefi.local`.
+
+Ce sont des personnes inventées, sur un domaine `.local` qui ne peut pas
+recevoir de courrier, et leurs portraits sont générés, pas photographiés.
+
+## Configuration — pointer sur ton propre projet Supabase
+
+Pour travailler sur ta propre base plutôt que sur la base partagée, ces deux
+valeurs prennent le pas sur les valeurs par défaut :
 
 1. Copie `dart_define.example.json` en `dart_define.json` (déjà ignoré par
    git).
