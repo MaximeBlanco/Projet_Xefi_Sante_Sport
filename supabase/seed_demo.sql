@@ -265,23 +265,38 @@ where sports.id = sessions.sport_id
   and sessions.id >= '00000000-0000-0000-0000-000000005000'
   and sessions.id <= '00000000-0000-0000-0000-000000005fff';
 
--- Where people actually train. Left off some sessions on purpose: a venue is
--- optional, and the tile has to be right when it is missing too.
+-- Where people actually train.
+--
+-- Keyed on the sport, not on the session id: paired at random, the demo read
+-- as basket-ball at the swimming pool, which is worse than no venue at all.
+-- Cleared first so a re-run repairs a wrong pairing rather than keeping it.
+update sessions
+set venue_name = null, venue_kind = null, venue_osm_id = null
+where sessions.id >= '00000000-0000-0000-0000-000000005000'
+  and sessions.id <= '00000000-0000-0000-0000-000000005fff';
+
+-- The last hex digit decides only *whether* a session has a venue, so roughly
+-- seven in sixteen keep none: a venue is optional, and the tile has to be right
+-- when it is missing too.
 update sessions
 set venue_name = venues.name,
     venue_kind = venues.kind,
     venue_osm_id = venues.osm_id
-from (
+from sports, (
   values
-    ('0', 'Parc de la Tête d''Or',      'park',    'way/23107135'),
-    ('1', 'Gymnase Bellecour',          'sports_centre', 'way/41882201'),
-    ('2', 'Piscine du Rhône',           'swimming_pool', 'way/30551824'),
-    ('4', 'Stade de Gerland',           'stadium', 'way/26112345'),
-    ('6', 'Salle de sport, siège XEFI', 'fitness_centre', 'node/9911223'),
-    ('8', 'Berges du Rhône',            'track',   'way/55120987'),
-    ('b', 'Halle Tony Garnier',         'sports_centre', 'way/44998877')
-) as venues(last_hex, name, kind, osm_id)
-where right(sessions.id::text, 1) = venues.last_hex
+    ('Football',      'Stade de Gerland',           'stadium',        'way/26112345'),
+    ('Basket-ball',   'Gymnase Bellecour',          'sports_centre',  'way/41882201'),
+    ('Natation',      'Piscine du Rhône',           'swimming_pool',  'way/30551824'),
+    ('Musculation',   'Salle de sport, siège XEFI', 'fitness_centre', 'node/9911223'),
+    ('Rameur',        'Salle de sport, siège XEFI', 'fitness_centre', 'node/9911223'),
+    ('Course à pied', 'Parc de la Tête d''Or',      'park',           'way/23107135'),
+    ('Marche',        'Parc de la Tête d''Or',      'park',           'way/23107135'),
+    ('Vélo',          'Berges du Rhône',            'track',          'way/55120987'),
+    ('Tennis',        'Tennis Club de Lyon',        'pitch',          'way/38221100')
+) as venues(sport_name, name, kind, osm_id)
+where sports.id = sessions.sport_id
+  and sports.name = venues.sport_name
+  and right(sessions.id::text, 1) in ('0', '1', '2', '4', '6', '8', 'b')
   and sessions.id >= '00000000-0000-0000-0000-000000005000'
   and sessions.id <= '00000000-0000-0000-0000-000000005fff';
 
