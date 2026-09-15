@@ -5,6 +5,7 @@ import 'package:monapp/models/sport.dart';
 import 'package:monapp/providers/sport_provider.dart';
 import 'package:monapp/screens/sessions/record_session_screen.dart';
 import 'package:monapp/widgets/duration_wheel_picker.dart';
+import 'package:monapp/widgets/sport_carousel.dart';
 
 import '../../support/test_fixtures.dart';
 
@@ -29,15 +30,29 @@ void main() {
       await tester.pump();
 
       expect(find.text('Nouvelle séance'), findsOneWidget);
-      expect(find.byType(DropdownButtonFormField<Sport>), findsOneWidget);
+      expect(find.byType(SportCarousel), findsOneWidget);
 
-      // A closed dropdown only renders its hint, so the catalogue is only
-      // observable once the menu is open.
-      await tester.tap(find.byType(DropdownButtonFormField<Sport>));
+      // The deck shows its neighbours, so the catalogue is visible without any
+      // interaction at all — that is the point of replacing the dropdown.
+      expect(find.text('Vélo'), findsOneWidget);
+      expect(find.text('Course à pied'), findsOneWidget);
+    });
+
+    testWidgets('starts on the first sport so nothing is left unchosen',
+        (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: [
+            sportListProvider.overrideWith((ref) => buildSportCatalogue()),
+          ],
+          child: const RecordSessionScreen(),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Vélo'), findsWidgets);
-      expect(find.textContaining('Course à pied'), findsWidgets);
+      // The centred card is the answer, so there is no "choose a sport" error
+      // left to trigger.
+      expect(find.text('Choisissez un sport'), findsNothing);
     });
 
     testWidgets('offers wheels rather than a duration to type', (tester) async {
@@ -69,13 +84,19 @@ void main() {
       );
       await tester.pump();
 
+      await tester.pumpAndSettle();
+
+      // The recap restates the whole form: the sport picked by the carousel,
+      // the duration from the wheels, and the score that follows from it.
       expect(
         find.text(
-          '${SessionDuration.describeMinutes(SessionDuration.defaultMinutes)}'
-          ' · ${SessionDuration.defaultMinutes} pts',
+          'Vélo · '
+          '${SessionDuration.describeMinutes(SessionDuration.defaultMinutes)}',
         ),
         findsOneWidget,
       );
+      expect(find.text('${SessionDuration.defaultMinutes}'), findsWidgets);
+      expect(find.text('pts'), findsOneWidget);
       expect(find.text('La durée doit être supérieure à 0'), findsNothing);
     });
 
@@ -100,7 +121,8 @@ void main() {
       await tester.drag(minuteWheel, const Offset(0, 88));
       await tester.pumpAndSettle();
 
-      expect(find.text('28 min · 28 pts'), findsOneWidget);
+      expect(find.text('Vélo · 28 min'), findsOneWidget);
+      expect(find.text('28'), findsWidgets);
     });
 
     testWidgets('shows the French empty state when no sport is available',

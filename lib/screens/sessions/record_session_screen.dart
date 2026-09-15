@@ -12,9 +12,29 @@ import '../../providers/record_session_controller.dart';
 import '../../providers/sport_provider.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/duration_wheel_picker.dart';
+import '../../widgets/motion.dart';
 import '../../widgets/route_map.dart';
+import '../../widgets/sport_carousel.dart';
 import '../../widgets/venue_picker.dart';
+import '../../widgets/xefi_backdrop.dart';
 import 'track_route_screen.dart';
+
+/// Matches the floating label an InputDecorator gives the other fields, so the
+/// carousel does not look like it belongs to a different form.
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(color: AppColors.secondaryText),
+    );
+  }
+}
 
 class RecordSessionScreen extends ConsumerStatefulWidget {
   const RecordSessionScreen({super.key});
@@ -41,10 +61,10 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
 
   /// A tracked route belongs to the sport it was recorded for, so switching
   /// sports drops it rather than attaching a bike ride to a swim.
-  void _selectSport(Sport? sport) {
+  void _selectSport(Sport sport) {
     setState(() {
       _selectedSport = sport;
-      if (sport == null || !sport.isGpsTrackable) {
+      if (!sport.isGpsTrackable) {
         _trackedRoute = null;
       }
     });
@@ -98,16 +118,17 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
     setState(() => _errorMessage = null);
 
     final trackedRoute = _trackedRoute;
-    final wasRecorded =
-        await ref.read(recordSessionControllerProvider.notifier).submit(
-              sport: selectedSport,
-              date: _selectedDate,
-              durationMin: _durationMin,
-              route: trackedRoute?.route,
-              distanceKm: trackedRoute?.distanceKm,
-              elevationGainM: trackedRoute?.elevationGainM,
-              venue: _venue,
-            );
+    final wasRecorded = await ref
+        .read(recordSessionControllerProvider.notifier)
+        .submit(
+          sport: selectedSport,
+          date: _selectedDate,
+          durationMin: _durationMin,
+          route: trackedRoute?.route,
+          distanceKm: trackedRoute?.distanceKm,
+          elevationGainM: trackedRoute?.elevationGainM,
+          venue: _venue,
+        );
 
     if (!mounted) return;
 
@@ -143,20 +164,6 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
     return "L'enregistrement de la séance a échoué, réessayez.";
   }
 
-  /// Points equal the duration in minutes, so reading the wheels back tells
-  /// the user what they are about to score before they commit to it.
-  String get _durationSummary =>
-      '${SessionDuration.describeMinutes(_durationMin)} · $_durationMin pts';
-
-  Sport? _matchingSportInCatalogue(List<Sport> sports) {
-    final selectedSportId = _selectedSport?.id;
-    if (selectedSportId == null) return null;
-    for (final sport in sports) {
-      if (sport.id == selectedSportId) return sport;
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final sportCatalogue = ref.watch(sportListProvider);
@@ -164,13 +171,15 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nouvelle séance')),
-      body: AsyncValueView<List<Sport>>(
-        value: sportCatalogue,
-        onRetry: () => ref.invalidate(sportListProvider),
-        emptyMessage: 'Aucun sport disponible pour le moment.',
-        isEmpty: (sports) => sports.isEmpty,
-        builder: (sports) =>
-            _buildForm(sports: sports, isSubmitting: isSubmitting),
+      body: XefiBackdrop(
+        child: AsyncValueView<List<Sport>>(
+          value: sportCatalogue,
+          onRetry: () => ref.invalidate(sportListProvider),
+          emptyMessage: 'Aucun sport disponible pour le moment.',
+          isEmpty: (sports) => sports.isEmpty,
+          builder: (sports) =>
+              _buildForm(sports: sports, isSubmitting: isSubmitting),
+        ),
       ),
     );
   }
@@ -187,65 +196,94 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DropdownButtonFormField<Sport>(
-                  key: ObjectKey(sports),
-                  initialValue: _matchingSportInCatalogue(sports),
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Sport'),
-                  hint: const Text('Choisissez un sport'),
-                  items: [
-                    for (final sport in sports)
-                      DropdownMenuItem<Sport>(
-                        value: sport,
-                        child: Text('${sport.emoji}  ${sport.name}'),
-                      ),
-                  ],
-                  onChanged: isSubmitting ? null : _selectSport,
-                  validator: (sport) =>
-                      sport == null ? 'Choisissez un sport' : null,
+                const ScaleIn(from: 0.96, child: _FieldLabel('Sport')),
+                const SizedBox(height: 8),
+                ScaleIn(
+                  from: 0.96,
+                  delay: const Duration(milliseconds: 60),
+                  child: SportCarousel(
+                    key: ObjectKey(sports),
+                    sports: sports,
+                    enabled: !isSubmitting,
+                    onSportSelected: (sport) {
+                      if (sport.id == _selectedSport?.id) return;
+                      _selectSport(sport);
+                    },
+                  ),
                 ),
                 if (_selectedSport?.isGpsTrackable ?? false) ...[
-                  const SizedBox(height: 16),
-                  _RouteSection(
-                    trackedRoute: _trackedRoute,
-                    enabled: !isSubmitting,
-                    onTrack: () => _trackRoute(_selectedSport!),
+                  const SizedBox(height: 20),
+                  ScaleIn(
+                    from: 0.96,
+                    delay: const Duration(milliseconds: 100),
+                    child: _RouteSection(
+                      trackedRoute: _trackedRoute,
+                      enabled: !isSubmitting,
+                      onTrack: () => _trackRoute(_selectedSport!),
+                    ),
                   ),
                 ],
-                const SizedBox(height: 16),
-                InputDecorator(
-                  isEmpty: false,
-                  decoration: InputDecoration(
-                    labelText: 'Durée',
-                    errorText: _durationError,
-                    helperText:
-                        _durationError == null ? _durationSummary : null,
+                const SizedBox(height: 28),
+                ScaleIn(
+                  from: 0.96,
+                  delay: const Duration(milliseconds: 140),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _FieldLabel('Durée'),
+                      const SizedBox(height: 4),
+                      DurationWheelPicker(
+                        durationMin: _durationMin,
+                        enabled: !isSubmitting,
+                        onDurationChanged: (durationMin) =>
+                            setState(() => _durationMin = durationMin),
+                      ),
+                      if (_durationError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            _durationError!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  child: DurationWheelPicker(
-                    durationMin: _durationMin,
+                ),
+                const SizedBox(height: 24),
+                ScaleIn(
+                  from: 0.96,
+                  delay: const Duration(milliseconds: 220),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _FieldLabel('Date'),
+                      const SizedBox(height: 8),
+                      _DateChip(
+                        label: _dateFormat.format(_selectedDate),
+                        onTap: isSubmitting ? null : _pickDate,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ScaleIn(
+                  from: 0.96,
+                  delay: const Duration(milliseconds: 260),
+                  child: VenuePicker(
+                    venue: _venue,
                     enabled: !isSubmitting,
-                    onDurationChanged: (durationMin) =>
-                        setState(() => _durationMin = durationMin),
+                    onChanged: (venue) => setState(() => _venue = venue),
                   ),
                 ),
-                const SizedBox(height: 16),
-                VenuePicker(
-                  venue: _venue,
-                  enabled: !isSubmitting,
-                  onChanged: (venue) => setState(() => _venue = venue),
-                ),
-                const SizedBox(height: 16),
-                InkWell(
-                  onTap: isSubmitting ? null : _pickDate,
-                  borderRadius: BorderRadius.circular(12),
-                  child: InputDecorator(
-                    decoration: const InputDecoration(labelText: 'Date'),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(_dateFormat.format(_selectedDate))),
-                        const Icon(Icons.calendar_today, size: 18),
-                      ],
-                    ),
+                const SizedBox(height: 28),
+                ScaleIn(
+                  from: 0.96,
+                  delay: const Duration(milliseconds: 300),
+                  child: _SessionRecap(
+                    sportName: _selectedSport?.name,
+                    durationMin: _durationMin,
                   ),
                 ),
                 if (_errorMessage != null) ...[
@@ -253,7 +291,9 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
                   Text(
                     _errorMessage!,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -274,6 +314,115 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DateChip extends StatelessWidget {
+  const _DateChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: FrostedPanel(
+          borderRadius: 16,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 18,
+                color: AppColors.secondaryText,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.black,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.expand_more,
+                size: 20,
+                color: AppColors.secondaryText,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Restates the whole form in one line, and animates when any part of it
+/// changes.
+///
+/// The three inputs sit far apart on screen, so committing means remembering
+/// what was picked at the top while looking at the button at the bottom. The
+/// recap removes that, and since points equal the duration it is also where the
+/// score becomes visible before it is earned.
+class _SessionRecap extends StatelessWidget {
+  const _SessionRecap({required this.sportName, required this.durationMin});
+
+  final String? sportName;
+  final int durationMin;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return FrostedPanel(
+      borderRadius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      // The recap is the one panel that carries the accent: it states the score
+      // about to be earned, which is what the red is for.
+      tint: AppColors.primary.withValues(alpha: 0.09),
+      child: Row(
+        children: [
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: Text(
+                sportName == null
+                    ? SessionDuration.describeMinutes(durationMin)
+                    : '$sportName · ${SessionDuration.describeMinutes(durationMin)}',
+                key: ValueKey('$sportName-$durationMin'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.black,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          AnimatedCounter(
+            value: durationMin,
+            duration: const Duration(milliseconds: 400),
+            style: textTheme.titleLarge?.copyWith(
+              fontSize: 20,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'pts',
+            style: textTheme.bodyMedium?.copyWith(color: AppColors.primary),
+          ),
+        ],
       ),
     );
   }

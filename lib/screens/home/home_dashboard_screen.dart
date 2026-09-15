@@ -4,10 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/domain/session_duration.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/home_summary.dart';
+import '../../providers/event_provider.dart';
 import '../../providers/home_summary_provider.dart';
+import '../../providers/weekly_health_provider.dart';
 import '../../widgets/async_value_view.dart';
-import '../../widgets/fade_slide_in.dart';
+import '../../widgets/event_card.dart';
+import '../../widgets/motion.dart';
 import '../../widgets/session_tile.dart';
+import '../../widgets/weekly_health_card.dart';
 import '../../widgets/xefi_backdrop.dart';
 import '../sessions/record_session_screen.dart';
 
@@ -16,7 +20,9 @@ class HomeDashboardScreen extends ConsumerWidget {
 
   void _openRecordSession(BuildContext context) {
     Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (context) => const RecordSessionScreen()),
+      MaterialPageRoute<void>(
+        builder: (context) => const RecordSessionScreen(),
+      ),
     );
   }
 
@@ -34,27 +40,33 @@ class HomeDashboardScreen extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
             children: [
-              FadeSlideIn(child: _Greeting(name: data.greetingName)),
+              RiseIn(child: _Greeting(name: data.greetingName)),
               const SizedBox(height: 40),
-              FadeSlideIn(
+              RiseIn(
                 delay: const Duration(milliseconds: 90),
                 child: _PointsHeadline(summary: data),
               ),
-              const SizedBox(height: 40),
-              FadeSlideIn(
+              const SizedBox(height: 32),
+              RiseIn(
                 delay: const Duration(milliseconds: 180),
+                child: const _WeeklyHealthSection(),
+              ),
+              const SizedBox(height: 32),
+              RiseIn(
+                delay: const Duration(milliseconds: 260),
                 child: _StatsRow(summary: data),
               ),
               const SizedBox(height: 40),
-              FadeSlideIn(
+              RiseIn(
                 delay: const Duration(milliseconds: 270),
                 child: ElevatedButton(
                   onPressed: () => _openRecordSession(context),
                   child: const Text('Enregistrer une séance'),
                 ),
               ),
+              const _UpcomingEventsSection(),
               if (data.lastSession != null)
-                FadeSlideIn(
+                RiseIn(
                   delay: const Duration(milliseconds: 360),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,6 +85,66 @@ class HomeDashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// What is coming up, as a row of cards you scroll sideways.
+///
+/// Its own consumer, and silent when there is nothing: an empty "À venir"
+/// heading on a home screen is worse than no heading, and a failed read of
+/// events must not cost the user their score.
+class _UpcomingEventsSection extends ConsumerWidget {
+  const _UpcomingEventsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = ref.watch(upcomingEventsProvider).valueOrNull;
+    if (events == null || events.isEmpty) return const SizedBox.shrink();
+
+    final now = ref.watch(todayProvider);
+
+    return RiseIn(
+      delay: const Duration(milliseconds: 320),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 40),
+          const _SectionLabel('À venir'),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: EventCard.height,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              // No padding of its own: the page already insets this section,
+              // and adding to it would push the first card away from the
+              // headings it belongs under.
+              padding: EdgeInsets.zero,
+              itemCount: events.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemBuilder: (context, index) => SlideIn(
+                delay: staggerFor(index, step: 70),
+                child: EventCard(event: events[index], now: now),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kept as its own consumer so a slow or failed health read never blanks the
+/// score above it.
+class _WeeklyHealthSection extends ConsumerWidget {
+  const _WeeklyHealthSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final health = ref.watch(weeklyHealthProvider);
+    return health.maybeWhen(
+      data: (data) => WeeklyHealthCard(health: data),
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }
@@ -167,10 +239,8 @@ class _RankBadge extends StatelessWidget {
       ),
       child: Text(
         '$rankLabel sur $participantCount',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppColors.white,
-              fontWeight: FontWeight.w800,
-            ),
+        style: Theme.of(context).textTheme.labelLarge
+            ?.copyWith(color: AppColors.white, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -263,10 +333,10 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label.toUpperCase(),
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.secondaryText,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-          ),
+        color: AppColors.secondaryText,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
     );
   }
 }

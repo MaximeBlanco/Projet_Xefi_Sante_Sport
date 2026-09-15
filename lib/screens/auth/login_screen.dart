@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/localization/auth_error_messages.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/fade_slide_in.dart';
+import '../../widgets/motion.dart';
 import '../../widgets/xefi_backdrop.dart';
 import '../../widgets/xefi_logo.dart';
 import 'sign_up_screen.dart';
@@ -85,8 +85,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const FadeSlideIn(
-                          child: Center(child: XefiLogo(height: 34)),
+                        const ScaleIn(
+                          child: Center(child: XefiLockup(logoHeight: 30)),
                         ),
                         const SizedBox(height: 48),
                         Text(

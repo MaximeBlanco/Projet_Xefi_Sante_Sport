@@ -22,14 +22,8 @@ class ProfileRepository {
     return Profile.fromJson(row);
   }
 
-  Future<void> updateName({
-    required String userId,
-    required String name,
-  }) {
-    return _client
-        .from('profiles')
-        .update({'name': name})
-        .eq('id', userId);
+  Future<void> updateName({required String userId, required String name}) {
+    return _client.from('profiles').update({'name': name}).eq('id', userId);
   }
 
   Future<void> updateWeight({
@@ -71,11 +65,10 @@ class ProfileRepository {
           ),
         );
 
-    final publicUrl = _client.storage.from(_avatarBucket).getPublicUrl(
-          objectPath,
-        );
-    final versionedUrl =
-        '$publicUrl?v=${uploadedAt.millisecondsSinceEpoch}';
+    final publicUrl = _client.storage
+        .from(_avatarBucket)
+        .getPublicUrl(objectPath);
+    final versionedUrl = '$publicUrl?v=${uploadedAt.millisecondsSinceEpoch}';
 
     await _client
         .from('profiles')

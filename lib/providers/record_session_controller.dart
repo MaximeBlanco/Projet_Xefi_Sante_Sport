@@ -55,7 +55,9 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
               met: sport.met,
             );
 
-      await ref.read(sessionRepositoryProvider).createSession(
+      await ref
+          .read(sessionRepositoryProvider)
+          .createSession(
             userId: signedInUser.id,
             sportId: sport.id,
             date: date,
@@ -92,5 +94,5 @@ class RecordSessionController extends AutoDisposeAsyncNotifier<void> {
 
 final recordSessionControllerProvider =
     AutoDisposeAsyncNotifierProvider<RecordSessionController, void>(
-  RecordSessionController.new,
-);
+      RecordSessionController.new,
+    );

@@ -14,12 +14,25 @@ class ProfileAvatar extends StatelessWidget {
     this.avatarUrl,
     this.radius = 24,
     this.highlighted = false,
+    this.onDarkChip = false,
+    this.discColour,
+    this.initialsColour,
   });
 
   final String name;
   final String? avatarUrl;
   final double radius;
   final bool highlighted;
+
+  /// Draws the initials white on a dark disc, for the leaderboard rows where a
+  /// pale chip would disappear into the white card behind it.
+  final bool onDarkChip;
+
+  /// Explicit colours, for grounds the two presets do not cover — the podium
+  /// sits on black, where the default near-black disc and dark-navy initials
+  /// both vanish.
+  final Color? discColour;
+  final Color? initialsColour;
 
   String get _initials {
     final words = name.trim().split(RegExp(r'[\s@._-]+'))
@@ -36,16 +49,23 @@ class ProfileAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = avatarUrl;
     final background =
-        highlighted ? AppColors.primary : AppColors.black.withValues(alpha: 0.06);
-    final foreground = highlighted ? AppColors.white : AppColors.secondaryText;
+        discColour ??
+        (highlighted
+            ? AppColors.primary
+            : onDarkChip
+            ? AppColors.secondaryText
+            : AppColors.black.withValues(alpha: 0.06));
+    final foreground =
+        initialsColour ??
+        (highlighted || onDarkChip ? AppColors.white : AppColors.secondaryText);
 
     final initials = Text(
       _initials,
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontSize: radius * 0.7,
-            fontWeight: FontWeight.w800,
-            color: foreground,
-          ),
+        fontSize: radius * 0.7,
+        fontWeight: FontWeight.w800,
+        color: foreground,
+      ),
     );
 
     return Container(

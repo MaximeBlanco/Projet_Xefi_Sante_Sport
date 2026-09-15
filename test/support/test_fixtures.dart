@@ -4,6 +4,7 @@ import 'package:monapp/models/gps_point.dart';
 import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/models/session.dart';
 import 'package:monapp/models/sport.dart';
+import 'package:monapp/models/team_ranking_entry.dart';
 import 'package:monapp/models/venue.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
@@ -71,6 +72,8 @@ RankingEntry buildRankingEntry({
   int totalDurationMin = 120,
   double totalCaloriesBurned = 900.0,
   int sessionCount = 3,
+  int? currentRank,
+  int? previousRank,
 }) {
   return RankingEntry(
     userId: userId,
@@ -79,6 +82,8 @@ RankingEntry buildRankingEntry({
     totalDurationMin: totalDurationMin,
     totalCaloriesBurned: totalCaloriesBurned,
     sessionCount: sessionCount,
+    currentRank: currentRank,
+    previousRank: previousRank,
   );
 }
 
@@ -121,5 +126,29 @@ Widget buildTestAppWithScaffold({
   return buildTestApp(
     overrides: overrides,
     child: Scaffold(body: child),
+  );
+}
+
+TeamRankingEntry buildTeamRankingEntry({
+  String teamId = 'team-1',
+  String name = 'Les Rouges',
+  int colorValue = 0xFFE10600,
+  int memberCount = 3,
+  int totalPoints = 168,
+  int totalDurationMin = 168,
+  int sessionCount = 2,
+  int? currentRank = 1,
+  int? previousRank = 1,
+}) {
+  return TeamRankingEntry(
+    teamId: teamId,
+    name: name,
+    colorValue: colorValue,
+    memberCount: memberCount,
+    totalPoints: totalPoints,
+    totalDurationMin: totalDurationMin,
+    sessionCount: sessionCount,
+    currentRank: currentRank,
+    previousRank: previousRank,
   );
 }

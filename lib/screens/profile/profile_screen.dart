@@ -3,19 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/domain/achievement.dart';
 import '../../core/domain/body_weight_range.dart';
 import '../../core/domain/session_duration.dart';
-import '../../core/domain/stats_period.dart';
 import '../../core/localization/app_locale.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/profile.dart';
 import '../../models/profile_stats.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/profile_editing_controller.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/profile_stats_provider.dart';
-import '../../providers/session_provider.dart';
+import '../../providers/team_provider.dart';
+import '../../widgets/achievement_tile.dart';
 import '../../widgets/async_value_view.dart';
-import '../../widgets/profile_avatar.dart';
+import '../../widgets/member_card.dart';
+import '../../widgets/monthly_points_chart.dart';
+import '../../widgets/motion.dart';
+import 'team_picker_sheet.dart';
 
 const String _missingValuePlaceholder = '—';
 
@@ -72,14 +77,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       title: 'Votre nom',
       initialValue: profile.name,
       hintText: 'Nom affiché dans le classement',
-      validator: (value) => (value == null || value.trim().isEmpty)
-          ? 'Nom obligatoire'
-          : null,
+      validator: (value) =>
+          (value == null || value.trim().isEmpty) ? 'Nom obligatoire' : null,
     );
     if (name == null || !mounted) return;
 
-    final succeeded =
-        await ref.read(profileEditingControllerProvider.notifier).renameTo(name);
+    final succeeded = await ref
+        .read(profileEditingControllerProvider.notifier)
+        .renameTo(name);
     if (!mounted) return;
     _reportOutcome(succeeded, 'Nom mis à jour');
   }
@@ -91,7 +96,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       hintText: 'En kilogrammes',
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       validator: (value) {
-        final weightKg = double.tryParse((value ?? '').trim().replaceAll(',', '.'));
+        final weightKg = double.tryParse(
+          (value ?? '').trim().replaceAll(',', '.'),
+        );
         if (weightKg == null) return 'Poids invalide';
         return BodyWeightRange.contains(weightKg)
             ? null
@@ -127,6 +134,92 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Future<void> _signOut() async {
+    final confirmed = await _confirm(
+      title: 'Se déconnecter ?',
+      message:
+          'Vous devrez saisir à nouveau votre e-mail et votre mot de '
+          'passe pour revenir.',
+      confirmLabel: 'Se déconnecter',
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(authRepositoryProvider).signOut();
+    } catch (_) {
+      // gotrue clears the local session before its network call, so the screen
+      // returns to the login page either way; only the remote revocation is in
+      // doubt, and that is worth saying.
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Déconnexion partielle, réessayez.')),
+      );
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    final confirmed = await _confirm(
+      title: 'Supprimer le compte ?',
+      message:
+          'Votre profil, vos séances, vos points et votre photo seront '
+          'supprimés définitivement. Vous disparaîtrez du classement. Cette '
+          'action est irréversible.',
+      confirmLabel: 'Supprimer',
+      isDestructive: true,
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final succeeded = await ref
+        .read(profileEditingControllerProvider.notifier)
+        .deleteAccount();
+    // On success the auth listener has already replaced this screen, so there
+    // is nothing left to tell: only a failure needs a word.
+    if (succeeded || !mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('La suppression a échoué, réessayez plus tard.'),
+      ),
+    );
+  }
+
+  Future<bool?> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool isDestructive = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          // Explicitly neutral: the theme paints every text button red, which
+          // on a destructive dialog made backing out look exactly as grave as
+          // going through with it.
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.secondaryText,
+            ),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              textStyle: isDestructive
+                  ? const TextStyle(fontWeight: FontWeight.w700)
+                  : null,
+            ),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _reportOutcome(bool succeeded, String successMessage) {
     final error = ref.read(profileEditingControllerProvider).error;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -156,6 +249,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         onPickAvatar: _pickAvatar,
         onEditName: () => _editName(data),
         onEditWeight: () => _editWeight(data),
+        onSignOut: _signOut,
+        onDeleteAccount: _deleteAccount,
       ),
     );
   }
@@ -227,22 +322,25 @@ class _TextPromptDialogState extends State<_TextPromptDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Annuler'),
         ),
-        ElevatedButton(
-          onPressed: _submit,
-          child: const Text('Enregistrer'),
-        ),
+        ElevatedButton(onPressed: _submit, child: const Text('Enregistrer')),
       ],
     );
   }
 }
 
-class _ProfileBody extends ConsumerWidget {
+/// The two faces of the profile: what you have done, and what you can change.
+///
+/// They are tabs rather than one long scroll because the settings are visited
+/// rarely and would otherwise push the numbers off the first screen.
+class _ProfileBody extends ConsumerStatefulWidget {
   const _ProfileBody({
     required this.profile,
     required this.isSaving,
     required this.onPickAvatar,
     required this.onEditName,
     required this.onEditWeight,
+    required this.onSignOut,
+    required this.onDeleteAccount,
   });
 
   final Profile profile;
@@ -250,310 +348,524 @@ class _ProfileBody extends ConsumerWidget {
   final VoidCallback onPickAvatar;
   final VoidCallback onEditName;
   final VoidCallback onEditWeight;
+  final VoidCallback onSignOut;
+  final VoidCallback onDeleteAccount;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProfileBody> createState() => _ProfileBodyState();
+}
+
+class _ProfileBodyState extends ConsumerState<_ProfileBody> {
+  _ProfileTab _tab = _ProfileTab.activity;
+
+  @override
+  Widget build(BuildContext context) {
     final stats = ref.watch(profileStatsProvider);
-    final period = ref.watch(statsPeriodProvider);
 
-    return RefreshIndicator(
-      // The stats derive from the sessions, so refreshing them means refetching
-      // those rather than invalidating a value that only ever recomputes.
-      onRefresh: () async {
-        ref.invalidate(currentProfileProvider);
-        ref.invalidate(userSessionsProvider);
-      },
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+    return AsyncValueView<ProfileStats>(
+      value: stats,
+      onRetry: () => ref.invalidate(profileStatsProvider),
+      builder: (data) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [
-          Center(
-            child: _EditableAvatar(
-              profile: profile,
-              isSaving: isSaving,
-              onTap: isSaving ? null : onPickAvatar,
+          ScaleIn(
+            child: MemberCard(
+              profile: widget.profile,
+              stats: data,
+              onTapAvatar: widget.isSaving ? null : widget.onPickAvatar,
             ),
           ),
           const SizedBox(height: 20),
-          Center(
-            child: _NameHeading(name: profile.name, onEdit: onEditName),
-          ),
-          const SizedBox(height: 8),
-          Center(child: _WeightLine(profile: profile, onEdit: onEditWeight)),
-          const SizedBox(height: 40),
-          const _SectionLabel('Statistiques'),
-          const SizedBox(height: 12),
-          // Outside the AsyncValueView so the control the user just tapped does
-          // not vanish underneath them while the numbers behind it settle.
-          _PeriodSelector(
-            selected: period,
-            onSelected: (period) =>
-                ref.read(statsPeriodProvider.notifier).state = period,
-          ),
-          const SizedBox(height: 20),
-          AsyncValueView<ProfileStats>(
-            value: stats,
-            onRetry: () => ref.invalidate(userSessionsProvider),
-            builder: (data) => _StatsSection(stats: data, period: period),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EditableAvatar extends StatelessWidget {
-  const _EditableAvatar({
-    required this.profile,
-    required this.isSaving,
-    required this.onTap,
-  });
-
-  final Profile profile;
-  final bool isSaving;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Changer la photo de profil',
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Stack(
-          alignment: Alignment.bottomRight,
-          children: [
-            ProfileAvatar(
-              name: profile.name,
-              avatarUrl: profile.avatarUrl,
-              radius: 56,
+          RiseIn(
+            delay: staggerFor(1),
+            child: _TabSelector(
+              current: _tab,
+              onChanged: (tab) => setState(() => _tab = tab),
             ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const ShapeDecoration(
-                color: AppColors.primary,
-                shape: CircleBorder(),
+          ),
+          const SizedBox(height: 16),
+          // Keyed on the tab so the entrance animations replay when you switch,
+          // which is what makes the swap read as a change of content.
+          KeyedSubtree(
+            key: ValueKey(_tab),
+            child: switch (_tab) {
+              _ProfileTab.activity => _ActivityTab(stats: data),
+              _ProfileTab.badges => _BadgesTab(stats: data),
+              _ProfileTab.settings => _SettingsTab(
+                profile: widget.profile,
+                isSaving: widget.isSaving,
+                onPickAvatar: widget.onPickAvatar,
+                onEditName: widget.onEditName,
+                onEditWeight: widget.onEditWeight,
+                onSignOut: widget.onSignOut,
+                onDeleteAccount: widget.onDeleteAccount,
               ),
-              child: isSaving
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.white,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.photo_camera,
-                      size: 16,
-                      color: AppColors.white,
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NameHeading extends StatelessWidget {
-  const _NameHeading({required this.name, required this.onEdit});
-
-  final String name;
-  final VoidCallback onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(
-          child: Text(
-            name,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontSize: 26,
-                ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        IconButton(
-          onPressed: onEdit,
-          icon: const Icon(Icons.edit_outlined, size: 20),
-          tooltip: 'Modifier le nom',
-          color: AppColors.primary,
-        ),
-      ],
-    );
-  }
-}
-
-class _WeightLine extends StatelessWidget {
-  const _WeightLine({required this.profile, required this.onEdit});
-
-  final Profile profile;
-  final VoidCallback onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final weightKg = profile.weightKg;
-    return TextButton.icon(
-      onPressed: onEdit,
-      icon: const Icon(Icons.monitor_weight_outlined, size: 18),
-      label: Text(
-        weightKg == null
-            ? 'Ajouter votre poids'
-            : '${weightKg.toStringAsFixed(weightKg.truncateToDouble() == weightKg ? 0 : 1)} kg',
-      ),
-    );
-  }
-}
-
-/// Lets the profile answer "what have I done" over a week, a month or the whole
-/// history without three separate screens saying the same thing.
-class _PeriodSelector extends StatelessWidget {
-  const _PeriodSelector({required this.selected, required this.onSelected});
-
-  final StatsPeriod selected;
-  final ValueChanged<StatsPeriod> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return SegmentedButton<StatsPeriod>(
-      segments: [
-        for (final period in StatsPeriod.values)
-          ButtonSegment<StatsPeriod>(
-            value: period,
-            label: Text(period.label),
-          ),
-      ],
-      selected: {selected},
-      showSelectedIcon: false,
-      onSelectionChanged: (selection) => onSelected(selection.first),
-      style: const ButtonStyle(
-        visualDensity: VisualDensity.compact,
-      ),
-    );
-  }
-}
-
-class _StatsSection extends StatelessWidget {
-  const _StatsSection({required this.stats, required this.period});
-
-  final ProfileStats stats;
-  final StatsPeriod period;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!stats.hasSessions) {
-      return Text(
-        period.emptyMessage,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyMedium,
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _StatGrid(stats: stats),
-        const SizedBox(height: 32),
-        const _SectionLabel('Répartition par sport'),
-        const SizedBox(height: 16),
-        for (final tally in stats.sportBreakdown)
-          _SportBar(tally: tally, totalDurationMin: stats.totalDurationMin),
-        // Only over the whole history: the first session of a filtered week is
-        // just its oldest one, which this sentence would misname.
-        if (period == StatsPeriod.allTime && stats.firstSessionDate != null) ...[
-          const SizedBox(height: 24),
-          Text(
-            'Premier entraînement le '
-            '${DateFormat('d MMMM yyyy', AppLocale.french).format(stats.firstSessionDate!)}',
-            style: Theme.of(context).textTheme.bodySmall,
+            },
           ),
         ],
-      ],
+      ),
     );
   }
 }
 
-class _StatGrid extends StatelessWidget {
-  const _StatGrid({required this.stats});
+enum _ProfileTab {
+  activity('Activité'),
+  badges('Badges'),
+  settings('Réglages');
 
-  final ProfileStats stats;
+  const _ProfileTab(this.label);
+
+  final String label;
+}
+
+class _TabSelector extends StatelessWidget {
+  const _TabSelector({required this.current, required this.onChanged});
+
+  final _ProfileTab current;
+  final ValueChanged<_ProfileTab> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final totalDistanceKm = stats.totalDistanceKm;
-    final tiles = <Widget>[
-      _StatTile(value: '${stats.totalPoints}', label: 'points'),
-      _StatTile(value: '${stats.sessionCount}', label: 'séances'),
-      _StatTile(
-        value: SessionDuration.describeMinutes(stats.totalDurationMin),
-        label: 'de sport',
+    final textTheme = Theme.of(context).textTheme;
+    final animate = !MediaQuery.disableAnimationsOf(context);
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.black.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(14),
       ),
-      _StatTile(
-        value: SessionDuration.describeMinutes(stats.averageDurationMin),
-        label: 'en moyenne',
+      child: Row(
+        children: [
+          for (final tab in _ProfileTab.values)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onChanged(tab),
+                child: AnimatedContainer(
+                  duration: animate
+                      ? const Duration(milliseconds: 220)
+                      : Duration.zero,
+                  curve: Curves.easeOut,
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  decoration: BoxDecoration(
+                    color: tab == current
+                        ? AppColors.black
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Semantics(
+                    selected: tab == current,
+                    child: Text(
+                      tab.label,
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: tab == current
+                            ? AppColors.white
+                            : AppColors.secondaryText.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
-      _StatTile(
-        value: SessionDuration.describeMinutes(stats.longestSessionMin),
-        label: 'plus longue',
+    );
+  }
+}
+
+class _ActivityTab extends StatelessWidget {
+  const _ActivityTab({required this.stats});
+
+  final ProfileStats stats;
+
+  String get _monthLabel {
+    final month = stats.lastSixMonths.last.month;
+    try {
+      return DateFormat('MMMM yyyy', AppLocale.french).format(month);
+    } on Exception {
+      return DateFormat('MM/yyyy').format(month);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final panels = <Widget>[
+      _Panel(
+        title: 'Résumé du mois',
+        subtitle: _monthLabel,
+        child: _MonthSummary(stats: stats),
       ),
-      _StatTile(
-        value: stats.hasCaloriesData
-            ? '${stats.totalCaloriesBurned.round()}'
-            : _missingValuePlaceholder,
-        label: 'kcal',
+      _Panel(
+        title: 'Six derniers mois',
+        subtitle: 'Points par mois',
+        child: MonthlyPointsChart(
+          months: stats.lastSixMonths,
+          best: stats.bestMonthPoints,
+        ),
       ),
-      if (totalDistanceKm != null)
-        _StatTile(
-          value: totalDistanceKm.toStringAsFixed(1),
-          label: 'km parcourus',
+      _Panel(
+        title: 'Records personnels',
+        child: _PersonalRecords(stats: stats),
+      ),
+      if (stats.sportBreakdown.isNotEmpty)
+        _Panel(
+          title: 'Répartition par sport',
+          subtitle: 'Temps cumulé',
+          child: Column(
+            children: [
+              for (final tally in stats.sportBreakdown.take(6))
+                _SportBar(
+                  tally: tally,
+                  best: stats.sportBreakdown.first.totalDurationMin,
+                ),
+            ],
+          ),
         ),
     ];
 
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.35,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      children: tiles,
+    return Column(
+      children: [
+        if (!stats.hasSessions) ...[
+          const _EmptyActivityNote(),
+          const SizedBox(height: 14),
+        ],
+        for (var index = 0; index < panels.length; index++) ...[
+          RiseIn(delay: staggerFor(index + 2), child: panels[index]),
+          if (index < panels.length - 1) const SizedBox(height: 14),
+        ],
+      ],
     );
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.value, required this.label});
+class _BadgesTab extends StatelessWidget {
+  const _BadgesTab({required this.stats});
 
-  final String value;
-  final String label;
+  final ProfileStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final progressList = Achievements.evaluate(stats);
+    final earned = progressList.where((entry) => entry.isEarned).length;
+    final nextUp = progressList.firstWhere(
+      (entry) => !entry.isEarned,
+      orElse: () => progressList.last,
+    );
+
+    return Column(
+      children: [
+        RiseIn(
+          delay: staggerFor(2),
+          child: _Panel(
+            title: 'Mes badges',
+            subtitle: '$earned sur ${progressList.length}',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progressList.isEmpty
+                        ? 0
+                        : earned / progressList.length,
+                    minHeight: 6,
+                    backgroundColor: AppColors.black.withValues(alpha: 0.07),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  earned == progressList.length
+                      ? 'Tous les badges sont débloqués. Bravo.'
+                      : 'Prochain badge · ${nextUp.achievement.label} '
+                            '(${nextUp.value}/${nextUp.achievement.target})',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        // Two columns at a fixed aspect rather than a free-flowing wrap: badges
+        // are compared against each other, and equal-sized tiles are what makes
+        // a wall of them scannable.
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: progressList.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.92,
+          ),
+          itemBuilder: (context, index) => ScaleIn(
+            delay: staggerFor(index + 3, step: 40),
+            child: AchievementTile(progress: progressList[index]),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyActivityNote extends StatelessWidget {
+  const _EmptyActivityNote();
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          FittedBox(
+          const Icon(Icons.flag_outlined, color: AppColors.primary, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
             child: Text(
-              value,
-              style: textTheme.titleLarge?.copyWith(fontSize: 20),
+              'Enregistrez une première séance pour voir vos statistiques se remplir.',
+              style: textTheme.bodyMedium?.copyWith(
+                color: AppColors.secondaryText,
+              ),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(label, style: textTheme.bodySmall, maxLines: 1),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthSummary extends StatelessWidget {
+  const _MonthSummary({required this.stats});
+
+  final ProfileStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _SummaryCell(
+              label: 'Séances',
+              value: '${stats.monthSessionCount}',
+              count: stats.monthSessionCount,
+            ),
+            const _CellDivider(),
+            _SummaryCell(
+              label: 'Temps',
+              value: SessionDuration.describeMinutes(stats.monthDurationMin),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Divider(color: AppColors.black.withValues(alpha: 0.07), height: 1),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _SummaryCell(
+              label: 'Points',
+              value: '${stats.monthPoints}',
+              count: stats.monthPoints,
+            ),
+            const _CellDivider(),
+            _SummaryCell(
+              label: 'Jours actifs',
+              value: '${stats.monthActiveDays}',
+              count: stats.monthActiveDays,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryCell extends StatelessWidget {
+  const _SummaryCell({required this.label, required this.value, this.count});
+
+  final String label;
+  final String value;
+
+  /// When set, the figure counts up instead of simply appearing.
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final valueStyle = textTheme.headlineMedium?.copyWith(
+      fontSize: 24,
+      color: AppColors.black,
+    );
+
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: textTheme.bodySmall?.copyWith(
+              fontSize: 10,
+              letterSpacing: 1,
+              color: AppColors.secondaryText.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(height: 6),
+          count == null
+              ? Text(value, style: valueStyle)
+              : AnimatedCounter(value: count!, style: valueStyle),
+        ],
+      ),
+    );
+  }
+}
+
+class _CellDivider extends StatelessWidget {
+  const _CellDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    // Fixed rather than stretched: the cells sit in a ListView, where a
+    // stretching row would be asked to lay out against an infinite height.
+    return Container(
+      width: 1,
+      height: 44,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      color: AppColors.black.withValues(alpha: 0.07),
+    );
+  }
+}
+
+class _PersonalRecords extends StatelessWidget {
+  const _PersonalRecords({required this.stats});
+
+  final ProfileStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalDistanceKm = stats.totalDistanceKm;
+
+    return Column(
+      children: [
+        // The two standing figures lead: they used to sit on the member card,
+        // which now carries identity only, and they belong somewhere.
+        _RecordRow(
+          icon: Icons.stars_outlined,
+          label: 'Points au total',
+          value: '${stats.totalPoints} pts',
+        ),
+        _RecordRow(
+          icon: Icons.bolt_outlined,
+          label: 'Série en cours',
+          value: stats.currentStreakDays == 1
+              ? '1 jour'
+              : '${stats.currentStreakDays} jours',
+        ),
+        _RecordRow(
+          icon: Icons.timer_outlined,
+          label: 'Plus longue séance',
+          value: SessionDuration.describeMinutes(stats.longestSessionMin),
+        ),
+        _RecordRow(
+          icon: Icons.calendar_view_week_outlined,
+          label: 'Meilleure semaine',
+          value: '${stats.bestWeekPoints} pts',
+        ),
+        _RecordRow(
+          icon: Icons.calendar_month_outlined,
+          // Named for the window it covers: the chart only holds six months, so
+          // claiming an all-time best here would be a claim we cannot make.
+          label: 'Meilleur mois (6 derniers)',
+          value: '${stats.bestMonthPoints} pts',
+        ),
+        _RecordRow(
+          icon: Icons.speed_outlined,
+          label: 'Séance moyenne',
+          value: SessionDuration.describeMinutes(stats.averageDurationMin),
+        ),
+        // Absent rather than zero when nothing was GPS-tracked: a history of
+        // swimming is not a history of zero kilometres.
+        if (totalDistanceKm != null)
+          _RecordRow(
+            icon: Icons.route_outlined,
+            label: 'Distance parcourue',
+            value: '${totalDistanceKm.toStringAsFixed(1)} km',
+          ),
+        _RecordRow(
+          icon: Icons.local_fire_department_outlined,
+          label: 'Calories brûlées',
+          value: stats.hasCaloriesData
+              ? '${stats.totalCaloriesBurned.round()} kcal'
+              : _missingValuePlaceholder,
+          isLast: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _RecordRow extends StatelessWidget {
+  const _RecordRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.isLast = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.black.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: AppColors.secondaryText),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: textTheme.bodyMedium?.copyWith(
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: AppColors.black,
+            ),
+          ),
         ],
       ),
     );
@@ -561,53 +873,65 @@ class _StatTile extends StatelessWidget {
 }
 
 class _SportBar extends StatelessWidget {
-  const _SportBar({required this.tally, required this.totalDurationMin});
+  const _SportBar({required this.tally, required this.best});
 
   final SportTally tally;
-  final int totalDurationMin;
+  final int best;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final share = totalDurationMin == 0
+    final animate = !MediaQuery.disableAnimationsOf(context);
+    final share = best <= 0
         ? 0.0
-        : tally.totalDurationMin / totalDurationMin;
+        : (tally.totalDurationMin / best).clamp(0.0, 1.0);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(tally.emoji, style: textTheme.titleMedium),
+              Text(tally.emoji, style: const TextStyle(fontSize: 15)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   tally.label,
-                  style: textTheme.bodyLarge,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondaryText,
+                  ),
                 ),
               ),
               Text(
                 SessionDuration.describeMinutes(tally.totalDurationMin),
-                style: textTheme.bodyMedium?.copyWith(
+                style: textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.black,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 7),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: share,
-              minHeight: 6,
-              backgroundColor: AppColors.black.withValues(alpha: 0.06),
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            borderRadius: BorderRadius.circular(3),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: animate ? 0 : share, end: share),
+              duration: animate
+                  ? const Duration(milliseconds: 650)
+                  : Duration.zero,
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) => LinearProgressIndicator(
+                value: value,
+                minHeight: 6,
+                backgroundColor: AppColors.black.withValues(alpha: 0.06),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.primary,
+                ),
+              ),
             ),
           ),
         ],
@@ -616,20 +940,268 @@ class _SportBar extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
+class _SettingsTab extends StatelessWidget {
+  const _SettingsTab({
+    required this.profile,
+    required this.isSaving,
+    required this.onPickAvatar,
+    required this.onEditName,
+    required this.onEditWeight,
+    required this.onSignOut,
+    required this.onDeleteAccount,
+  });
 
-  final String label;
+  final Profile profile;
+  final bool isSaving;
+  final VoidCallback onPickAvatar;
+  final VoidCallback onEditName;
+  final VoidCallback onEditWeight;
+  final VoidCallback onSignOut;
+  final VoidCallback onDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.secondaryText,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
+    return Column(
+      children: [
+        RiseIn(
+          delay: staggerFor(2),
+          child: _Panel(
+            title: 'Mon compte',
+            child: Column(
+              children: [
+                _SettingRow(
+                  icon: Icons.photo_camera_outlined,
+                  label: 'Photo de profil',
+                  value: profile.avatarUrl == null ? 'Ajouter' : 'Modifier',
+                  onTap: isSaving ? null : onPickAvatar,
+                ),
+                _SettingRow(
+                  icon: Icons.badge_outlined,
+                  label: 'Nom',
+                  value: profile.name,
+                  onTap: isSaving ? null : onEditName,
+                ),
+                _SettingRow(
+                  icon: Icons.monitor_weight_outlined,
+                  label: 'Poids',
+                  value: profile.weightKg == null
+                      ? _missingValuePlaceholder
+                      : '${profile.weightKg!.toStringAsFixed(0)} kg',
+                  onTap: isSaving ? null : onEditWeight,
+                ),
+                _TeamSettingRow(profile: profile, isSaving: isSaving),
+              ],
+            ),
           ),
+        ),
+        const SizedBox(height: 14),
+        // Its own panel, below the edits: leaving and deleting are not settings
+        // among others, and putting them one tap away from the weight field is
+        // how they get hit by accident.
+        RiseIn(
+          delay: staggerFor(3),
+          child: _Panel(
+            title: 'Session',
+            child: Column(
+              children: [
+                _SettingRow(
+                  icon: Icons.logout,
+                  label: 'Déconnexion',
+                  onTap: isSaving ? null : onSignOut,
+                ),
+                _SettingRow(
+                  icon: Icons.delete_outline,
+                  label: 'Supprimer mon compte',
+                  isDestructive: true,
+                  onTap: isSaving ? null : onDeleteAccount,
+                  isLast: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isSaving) ...[
+          const SizedBox(height: 16),
+          const Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The team row, which has to read the team list to name the current team.
+///
+/// Its own widget so the rest of the settings stay a plain layout: only this
+/// one line depends on a provider that can still be loading.
+class _TeamSettingRow extends ConsumerWidget {
+  const _TeamSettingRow({required this.profile, required this.isSaving});
+
+  final Profile profile;
+  final bool isSaving;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final team = ref.watch(currentTeamProvider).valueOrNull;
+
+    return _SettingRow(
+      icon: Icons.groups_outlined,
+      label: 'Mon équipe',
+      value: team?.name ?? 'Aucune',
+      onTap: isSaving
+          ? null
+          : () => TeamPickerSheet.show(context, currentTeamId: profile.teamId),
+      isLast: true,
+    );
+  }
+}
+
+class _SettingRow extends StatelessWidget {
+  const _SettingRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.value,
+    this.isDestructive = false,
+    this.isLast = false,
+  });
+
+  final IconData icon;
+  final String label;
+
+  /// Absent on a row that is an action rather than a value you can read.
+  final String? value;
+  final VoidCallback? onTap;
+
+  /// Draws the row in the primary red, which the identity reserves for calls to
+  /// action and, here, for the one action nothing undoes.
+  final bool isDestructive;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final labelColour = isDestructive
+        ? AppColors.primary
+        : AppColors.secondaryText;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: isDestructive
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                    color: labelColour,
+                  ),
+                ),
+              ),
+              if (value != null)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: Text(
+                    value!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: AppColors.secondaryText.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+              const Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: Color(0xFFB0B2BE),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A white card with a titled header, the unit the activity tab is built from.
+class _Panel extends StatelessWidget {
+  const _Panel({required this.title, required this.child, this.subtitle});
+
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.black.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  title,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: AppColors.black,
+                  ),
+                ),
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle!,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppColors.secondaryText.withValues(alpha: 0.55),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
     );
   }
 }

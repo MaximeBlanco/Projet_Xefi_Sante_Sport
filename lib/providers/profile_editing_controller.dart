@@ -43,12 +43,39 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
 
   Future<bool> changeAvatar(XFile picture, {required DateTime pickedAt}) {
     return _run((userId) async {
-      await ref.read(profileRepositoryProvider).uploadAvatar(
-            userId: userId,
-            file: picture,
-            uploadedAt: pickedAt,
-          );
+      await ref
+          .read(profileRepositoryProvider)
+          .uploadAvatar(userId: userId, file: picture, uploadedAt: pickedAt);
     });
+  }
+
+  /// Deletes the account and everything attached to it.
+  ///
+  /// Unlike the edits, nothing is invalidated afterwards: the sign-out inside
+  /// swaps the whole tree for the login screen, and refetching a profile that
+  /// no longer exists would only race that teardown with a doomed query.
+  Future<bool> deleteAccount() async {
+    state = const AsyncValue<void>.loading();
+    final keepAliveLink = ref.keepAlive();
+    try {
+      if (ref.read(currentUserProvider) == null) {
+        state = AsyncValue<void>.error(
+          const SignedOutWhileEditingException(),
+          StackTrace.current,
+        );
+        return false;
+      }
+
+      await ref.read(authRepositoryProvider).deleteAccount();
+
+      state = const AsyncValue<void>.data(null);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncValue<void>.error(error, stackTrace);
+      return false;
+    } finally {
+      keepAliveLink.close();
+    }
   }
 
   Future<bool> _run(Future<void> Function(String userId) write) async {
@@ -86,5 +113,5 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
 
 final profileEditingControllerProvider =
     AutoDisposeAsyncNotifierProvider<ProfileEditingController, void>(
-  ProfileEditingController.new,
-);
+      ProfileEditingController.new,
+    );
