@@ -4,9 +4,42 @@ App Flutter de suivi sportif compétitif pour les collaborateurs XEFI. Voir
 [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) pour la vision, l'architecture
 et les conventions du projet.
 
+## Télécharger
+
+| Je veux… | Lien | Ce qu'il faut installer |
+| --- | --- | --- |
+| **Juste essayer l'app** | [**Télécharger l'APK Android**](https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/releases/latest) | Rien. Un téléphone Android suffit |
+| **Lire ou modifier le code** | [**Télécharger le code en .zip**](https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/archive/refs/heads/main.zip) | Flutter |
+| **Suivre les mises à jour** | `git clone` ci-dessous | Git + Flutter |
+
+```
+git clone https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport.git
+cd Projet_Xefi_Sante_Sport
+```
+
+Les trois options donnent la même app, connectée à la même base de démonstration
+déjà peuplée : il n'y a **aucune clé à demander et aucun compte à créer** pour la
+faire tourner. Les identifiants de démo sont plus bas.
+
+### Installer l'APK sur un téléphone Android
+
+Android bloque par défaut les apps qui ne viennent pas du Play Store. Au premier
+lancement du fichier `.apk`, le téléphone propose « Autoriser cette source » :
+accepter, puis relancer l'installation. L'app est signée avec une clé de debug —
+c'est normal pour une démo, et c'est ce qui déclenche l'avertissement.
+
+L'app demande la localisation au premier enregistrement de séance : c'est le
+suivi GPS du parcours, décrit plus bas.
+
 ## Prérequis
 
+Pour **lancer l'app sur la base partagée**, une seule chose :
+
 - Flutter (SDK `^3.13.3`, voir `pubspec.yaml`)
+
+Pour **la faire tourner sur ta propre base** — développement, ou si tu veux tes
+données à toi — il faut en plus :
+
 - Un projet [Supabase](https://supabase.com) (gratuit)
 - La [CLI Supabase](https://supabase.com/docs/guides/cli), connectée à ton
   compte : elle applique les migrations **et** déploie l'Edge Function, les
