@@ -1,8 +1,71 @@
-# XEFI Sport
+<h1 align="center">XEFI Sport</h1>
 
-App Flutter de suivi sportif compétitif pour les collaborateurs XEFI. Voir
-[CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) pour la vision, l'architecture
-et les conventions du projet.
+<p align="center">
+  Le sport en entreprise, suivi comme une compétition — on enregistre ses séances,
+  son parcours se dessine sur la carte, et le classement se met à jour.
+</p>
+
+<p align="center">
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white">
+  <img alt="Dart" src="https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white">
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3FCF8E?logo=supabase&logoColor=white">
+  <img alt="Android" src="https://img.shields.io/badge/Android-APK%20prêt-3DDC84?logo=android&logoColor=white">
+</p>
+
+<p align="center">
+  <a href="https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/releases/latest"><b>Télécharger l'APK</b></a>
+  ·
+  <a href="#aperçu">Aperçu</a>
+  ·
+  <a href="#démarrage-rapide">Démarrer en 2 commandes</a>
+  ·
+  <a href="CAHIER_DES_CHARGES.md">Cahier des charges</a>
+</p>
+
+---
+
+## Aperçu
+
+Captures prises sur le jeu de démonstration, avec le compte `camille.roussel`.
+
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <img src="docs/captures/02-accueil.png" alt="Tableau de bord : points, rang et objectif santé">
+      <br><b>Tableau de bord</b>
+      <br><sub>Points, rang, objectif OMS hebdomadaire et prochains événements</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="docs/captures/03-seances.png" alt="Historique des séances filtrable par sport">
+      <br><b>Mes séances</b>
+      <br><sub>Journal filtrable par sport, avec durée, calories, distance et lieu</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="docs/captures/06-parcours.jpg" alt="Parcours de course enregistré au GPS, tracé sur la carte">
+      <br><b>Parcours GPS</b>
+      <br><sub>Le tracé relevé pendant la séance, distance et dénivelé calculés</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">
+      <img src="docs/captures/04-classement.png" alt="Classement individuel avec podium">
+      <br><b>Classement</b>
+      <br><sub>Podium et classement, en individuel ou par équipe</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="docs/captures/05-profil.png" alt="Profil avec carte membre et statistiques mensuelles">
+      <br><b>Profil</b>
+      <br><sub>Carte membre, niveau, résumé du mois et six derniers mois</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="docs/captures/01-connexion.png" alt="Écran de connexion avec compte de démonstration">
+      <br><b>Connexion</b>
+      <br><sub>Le compte de démonstration est affiché et se remplit en un clic</sub>
+    </td>
+  </tr>
+</table>
+
+---
 
 ## Télécharger
 
