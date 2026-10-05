@@ -99,7 +99,9 @@ fait disparaître la personne des deux classements filtrés.
 
 Camille voit que Théo l'a dépassée. Elle ouvre sa fiche : son niveau, ses points,
 son sport favori, ses records. Elle ouvre son historique et voit qu'il a couru
-trois fois cette semaine, avec les parcours.
+trois fois cette semaine. Théo a ouvert ses lieux et ses trajets, donc elle voit
+aussi où. Inès ne l'a pas fait : Camille voit ses séances, mais pas ses
+parcours.
 
 **Why this priority**: C'est ce qui donne du corps à la comparaison, mais le
 classement motive déjà sans. C'est aussi l'histoire qui porte le plus de risque
@@ -114,12 +116,50 @@ pas.
 
 1. **Given** Théo est un contact accepté, **When** Camille ouvre sa fiche,
    **Then** elle voit son niveau, ses points, son sport favori et ses records.
-2. **Given** Théo est un contact accepté, **When** Camille ouvre son historique,
-   **Then** elle voit ses séances avec leur durée, leur dépense, leur lieu et
-   leur parcours.
-3. **Given** Théo n'est pas un contact, **When** Camille ouvre sa fiche depuis le
+2. **Given** Théo est un contact accepté qui partage son historique, **When**
+   Camille l'ouvre, **Then** elle voit ses séances avec leur durée et leur
+   dépense.
+3. **Given** Théo partage aussi ses lieux et trajets, **When** Camille ouvre une
+   de ses séances, **Then** elle voit le lieu et le parcours sur la carte.
+4. **Given** Inès ne partage pas ses lieux et trajets, **When** Camille ouvre une
+   de ses séances, **Then** la séance s'affiche sans lieu ni carte, et l'écran dit
+   que ce membre ne les partage pas — il ne laisse pas croire à une séance sans
+   parcours.
+5. **Given** Théo n'est pas un contact, **When** Camille ouvre sa fiche depuis le
    classement général, **Then** elle ne voit que ce que le classement montre déjà
    — nom, points, rang — et le bouton pour l'ajouter.
+
+---
+
+### User Story 5 - Choisir ce qu'on laisse voir (Priority: P2)
+
+Inès veut bien être comparée à ses collègues, mais pas qu'ils sachent qu'elle
+court tous les soirs autour de chez elle. Dans les réglages de son compte, elle
+trouve deux interrupteurs : l'un pour son historique de séances, l'autre pour
+ses lieux et ses trajets. Le second est déjà fermé — elle ne l'a jamais ouvert.
+
+**Why this priority**: Elle passe avant l'histoire 4, pas après. Les lieux et
+trajets sont fermés par défaut, donc sans ces réglages la carte d'un contact est
+vide pour tout le monde et personne ne peut l'ouvrir. Livrer l'histoire 4 sans
+celle-ci donnerait une fonctionnalité qui a l'air cassée.
+
+**Independent Test**: Un membre ferme un interrupteur, et ce que ses contacts
+voient change en conséquence — vérifié depuis l'autre compte, pas seulement dans
+l'écran de réglages.
+
+**Acceptance Scenarios**:
+
+1. **Given** un compte vient d'être créé, **When** son titulaire ouvre ses
+   réglages, **Then** le partage des lieux et trajets est fermé, sans qu'il ait
+   eu à le fermer.
+2. **Given** Inès ferme le partage de son historique, **When** Camille ouvre sa
+   fiche, **Then** elle voit son niveau et ses points mais pas ses séances, et
+   l'écran dit que ce membre ne partage pas son historique.
+3. **Given** Inès ouvre ses lieux et trajets, **When** Camille rouvre une de ses
+   séances, **Then** le lieu et le parcours apparaissent.
+4. **Given** Inès referme ses lieux et trajets, **When** Camille rouvre la même
+   séance, **Then** le lieu et le parcours ont disparu — un réglage se change
+   dans les deux sens et vaut aussi pour le passé.
 
 ---
 
@@ -134,6 +174,15 @@ pas.
 - Un contact qui n'a enregistré aucune séance : il apparaît au classement avec
   zéro point, il ne disparaît pas.
 - La recherche ne renvoie rien : l'écran le dit, plutôt qu'une liste vide.
+- Un contact ferme son partage alors que quelqu'un consulte sa séance : au
+  prochain affichage, lieu et parcours ont disparu. Rien n'est conservé côté
+  lecteur.
+- Un membre ferme son historique mais garde ses lieux ouverts : il ne reste rien
+  à situer, donc ses contacts ne voient ni séances ni parcours. Les deux réglages
+  sont indépendants, mais le premier conditionne ce que le second peut montrer.
+- Un contact qui ne partage rien : sa fiche montre son niveau et ses points — ce
+  que le classement expose de toute façon — et dit que le reste n'est pas
+  partagé.
 
 ## Requirements *(mandatory)*
 
@@ -158,13 +207,25 @@ pas.
   l'individuel et des équipes, limitée au membre et à ses contacts acceptés.
 - **FR-010**: Un membre DOIT pouvoir consulter la fiche d'un contact accepté :
   niveau, points, sport favori, records.
-- **FR-011**: Un membre DOIT pouvoir consulter l'historique des séances d'un
-  contact accepté, y compris lieux et parcours.
-- **FR-012**: Le système NE DOIT PAS exposer les statistiques détaillées ni les
+- **FR-011**: Un membre DOIT disposer de deux réglages indépendants dans son
+  compte : le partage de son historique de séances, et le partage de ses lieux
+  et trajets.
+- **FR-012**: Le partage des lieux et trajets DOIT être fermé par défaut à la
+  création du compte. Le partage de l'historique DOIT être ouvert par défaut.
+- **FR-013**: Un membre DOIT pouvoir consulter l'historique des séances d'un
+  contact accepté QUI partage son historique.
+- **FR-014**: Les lieux et les trajets d'une séance NE DOIVENT être visibles par
+  un contact QUE si son auteur a ouvert ce partage.
+- **FR-015**: Un réglage DOIT valoir pour les séances déjà enregistrées comme
+  pour les suivantes, et DOIT pouvoir être changé dans les deux sens.
+- **FR-016**: Quand un contact ne partage pas, l'écran DOIT le dire, plutôt que
+  d'afficher un historique vide ou une carte vide qui passerait pour un défaut.
+- **FR-017**: Le système NE DOIT PAS exposer les statistiques détaillées ni les
   séances d'un membre qui n'est pas un contact accepté.
-- **FR-013**: Les règles d'accès DOIVENT être appliquées côté serveur, et pas
-  seulement par ce que l'interface choisit d'afficher.
-- **FR-014**: Un écran de contacts ou un classement filtré vide DOIT expliquer
+- **FR-018**: Les règles d'accès ET les réglages de partage DOIVENT être
+  appliqués côté serveur, et pas seulement par ce que l'interface choisit
+  d'afficher.
+- **FR-019**: Un écran de contacts ou un classement filtré vide DOIT expliquer
   comment le remplir plutôt que de n'afficher rien.
 
 ### Key Entities
@@ -173,7 +234,8 @@ pas.
   état (en attente, accepté) et sa date. Un seul lien par paire de membres,
   quel que soit le sens de la demande.
 - **Membre** : un profil existant. Gagne la notion d'être trouvable par son nom,
-  et celle d'avoir des contacts.
+  celle d'avoir des contacts, et deux préférences de partage — l'historique des
+  séances, et les lieux et trajets — réglables indépendamment.
 
 ## Success Criteria *(mandatory)*
 
@@ -185,10 +247,12 @@ pas.
   contacts acceptés — jamais une demande en attente, jamais un contact retiré.
 - **SC-003**: Une requête directe à l'API, en dehors de l'application, ne renvoie
   ni les séances ni les statistiques détaillées d'un membre qui n'est pas un
-  contact accepté.
+  contact accepté, ni les lieux et trajets d'un contact qui ne les partage pas.
 - **SC-004**: Les quatre états d'un lien — inexistant, en attente, accepté,
   retiré — sont couverts par des tests, ainsi que le refus de la demande à
   soi-même et de la demande en double.
+- **SC-005**: Les quatre combinaisons des deux réglages sont couvertes par des
+  tests, y compris le fait qu'un compte neuf ne diffuse aucun lieu.
 
 ## Assumptions
 
@@ -198,12 +262,18 @@ pas.
 - **Pas de blocage.** Un refus suffit dans un cadre de confiance. Le blocage a
   été écarté explicitement : il ajoute un état et des règles que ce contexte ne
   justifie pas encore.
-- **Le partage des séances est total ou nul.** Un contact accepté voit tout
-  l'historique, y compris lieux et parcours GPS ; un non-contact ne voit rien. Il
-  n'y a pas de réglage par séance ni de mode privé. **Cette décision expose où et
-  quand quelqu'un s'entraîne** — elle a été prise en connaissance de cause, et
-  c'est la première à revoir si l'app sortait du cadre d'une équipe qui se
-  connaît.
+- **Le partage se règle, il ne se subit pas.** Un contact accepté voit ce que
+  l'autre a choisi de montrer, via deux interrupteurs indépendants dans son
+  compte : l'historique des séances, et les lieux et trajets.
+- **Les lieux et trajets sont fermés par défaut, l'historique est ouvert.** Une
+  position dit où et quand quelqu'un s'entraîne ; c'est une donnée sensible, et
+  personne ne doit la diffuser sans l'avoir voulu. L'historique — sport, durée,
+  dépense — ne situe personne et reste ouvert, sinon la comparaison entre
+  collègues n'a plus d'objet et la fonctionnalité paraît cassée à l'installation.
+- **Le réglage est global, pas par séance.** On ne choisit pas de partager une
+  sortie et d'en cacher une autre : la granularité s'arrête au membre. Un réglage
+  par séance serait plus fin, mais il demande une décision à chaque
+  enregistrement, et une décision répétée finit par être prise au hasard.
 - **Pas de notification.** Une demande reçue se découvre en ouvrant l'app. Les
   notifications push ne font pas partie du produit aujourd'hui.
 - **La recherche porte sur le nom affiché**, pas sur l'adresse e-mail, qui n'est
