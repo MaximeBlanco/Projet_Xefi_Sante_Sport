@@ -13,13 +13,18 @@ import '../../widgets/motion.dart';
 import '../../widgets/ranking_podium.dart';
 import '../../widgets/ranking_tile.dart';
 import '../../widgets/team_ranking_tile.dart';
+import '../contacts/contacts_screen.dart';
+import '../contacts/member_sheet.dart';
 
 /// The list sits on a wash rather than on white, so the white cards read as
 /// cards instead of dissolving into the page.
 const _listGround = Color(0xFFF4F4F6);
 
+/// Who the leaderboard measures you against, from the whole company down to
+/// the colleagues you chose.
 enum _RankingScope {
   individuals('Individuel'),
+  contacts('Contacts'),
   teams('Équipes');
 
   const _RankingScope(this.label);
@@ -40,10 +45,12 @@ class _GlobalRankingScreenState extends ConsumerState<GlobalRankingScreen> {
 
   Future<void> _refresh() async {
     ref.invalidate(globalRankingProvider);
+    ref.invalidate(contactsRankingProvider);
     ref.invalidate(teamRankingProvider);
     try {
       await switch (_scope) {
         _RankingScope.individuals => ref.read(globalRankingProvider.future),
+        _RankingScope.contacts => ref.read(contactsRankingProvider.future),
         _RankingScope.teams => ref.read(teamRankingProvider.future),
       };
     } catch (_) {
@@ -71,6 +78,7 @@ class _GlobalRankingScreenState extends ConsumerState<GlobalRankingScreen> {
                 key: ValueKey(_scope),
                 child: switch (_scope) {
                   _RankingScope.individuals => const _IndividualRanking(),
+                  _RankingScope.contacts => const _ContactsRanking(),
                   _RankingScope.teams => const _TeamRanking(),
                 },
               ),
@@ -161,6 +169,42 @@ class _IndividualRanking extends ConsumerWidget {
   }
 }
 
+/// The same leaderboard as the global one, narrowed to the member and the
+/// colleagues they accepted.
+///
+/// Its own view rather than the global list filtered in the app: the ranks and
+/// the movement since Monday are computed inside the circle, so being second of
+/// four reads as second of four.
+class _ContactsRanking extends ConsumerWidget {
+  const _ContactsRanking();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final contactsRanking = ref.watch(contactsRankingProvider);
+    final currentUserId = ref.watch(currentUserProvider)?.id;
+
+    return AsyncValueView<List<RankingEntry>>(
+      value: contactsRanking,
+      onRetry: () => ref.invalidate(contactsRankingProvider),
+      // A leaderboard of one is this scope's empty state: the view always
+      // returns the member themselves, and nobody climbs against their own
+      // score.
+      isEmpty: (rankingEntries) => rankingEntries.length <= 1,
+      emptyMessage:
+          'Vous n\'avez pas encore de contact.\n'
+          'Ajoutez un collègue pour vous mesurer à lui plutôt qu\'à toute '
+          'la société.',
+      emptyAction: FilledButton.icon(
+        onPressed: () => openContactsScreen(context),
+        icon: const Icon(Icons.person_add_alt),
+        label: const Text('Ajouter un collègue'),
+      ),
+      builder: (rankingEntries) =>
+          _Leaderboard(entries: rankingEntries, currentUserId: currentUserId),
+    );
+  }
+}
+
 class _Leaderboard extends StatelessWidget {
   const _Leaderboard({required this.entries, required this.currentUserId});
 
@@ -185,6 +229,8 @@ class _Leaderboard extends StatelessWidget {
 
         final entryIndex = index - 1;
         final rankingEntry = entries[entryIndex];
+        final rank = rankingEntry.currentRank ?? entryIndex + 1;
+        final isCurrentUser = rankingEntry.userId == currentUserId;
         // From the left, in rank order: the leaderboard fills from the top
         // down, and the history enters from the opposite side so the two
         // lists never feel like the same screen.
@@ -194,10 +240,20 @@ class _Leaderboard extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.only(top: entryIndex == 0 ? 12 : 0),
             child: RankingTile(
-              rank: rankingEntry.currentRank ?? entryIndex + 1,
+              rank: rank,
               entry: rankingEntry,
               leaderPoints: leaderPoints,
-              isCurrentUser: rankingEntry.userId == currentUserId,
+              isCurrentUser: isCurrentUser,
+              // Adding somebody starts here rather than in the search: the
+              // leaderboard is where you find out who is worth measuring
+              // yourself against.
+              onTap: isCurrentUser
+                  ? null
+                  : () => showMemberSheet(
+                      context,
+                      entry: rankingEntry,
+                      rank: rank,
+                    ),
             ),
           ),
         );

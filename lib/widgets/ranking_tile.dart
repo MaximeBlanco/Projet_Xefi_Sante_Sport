@@ -13,11 +13,16 @@ class RankingTile extends StatelessWidget {
     required this.entry,
     required this.isCurrentUser,
     this.leaderPoints,
+    this.onTap,
   });
 
   final int rank;
   final RankingEntry entry;
   final bool isCurrentUser;
+
+  /// Opens onto the member. Null on the signed-in user's own row, which leads
+  /// nowhere one tap away from their own profile tab.
+  final VoidCallback? onTap;
 
   /// The top score, so each bar reads as a share of the lead rather than as a
   /// number nobody can place. Null hides the bar.
@@ -35,7 +40,6 @@ class RankingTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(14),
@@ -50,82 +54,105 @@ class RankingTile extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 22,
-            child: Text(
-              '$rank',
-              style: textTheme.titleMedium?.copyWith(
-                color: isCurrentUser
-                    ? AppColors.primary
-                    : AppColors.secondaryText.withValues(alpha: 0.55),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          SizedBox(width: 34, child: _MovementBadge(change: entry.rankChange)),
-          ProfileAvatar(
-            name: entry.name,
-            avatarUrl: entry.avatarUrl,
-            radius: 18,
-            onDarkChip: true,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      // The ink has to sit above the card's own white fill, so the splash is
+      // layered on top of the decoration rather than under it.
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
               children: [
-                Text(
-                  entry.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: isCurrentUser ? AppColors.primary : AppColors.black,
-                  ),
-                ),
-                if (leaderPoints != null) ...[
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: _share,
-                      minHeight: 5,
-                      backgroundColor: AppColors.black.withValues(alpha: 0.07),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isCurrentUser
-                            ? AppColors.primary
-                            : AppColors.secondaryText.withValues(alpha: 0.45),
-                      ),
+                SizedBox(
+                  width: 22,
+                  child: Text(
+                    '$rank',
+                    style: textTheme.titleMedium?.copyWith(
+                      color: isCurrentUser
+                          ? AppColors.primary
+                          : AppColors.secondaryText.withValues(alpha: 0.55),
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
+                ),
+                SizedBox(
+                  width: 34,
+                  child: _MovementBadge(change: entry.rankChange),
+                ),
+                ProfileAvatar(
+                  name: entry.name,
+                  avatarUrl: entry.avatarUrl,
+                  radius: 18,
+                  onDarkChip: true,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: isCurrentUser
+                              ? AppColors.primary
+                              : AppColors.black,
+                        ),
+                      ),
+                      if (leaderPoints != null) ...[
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: _share,
+                            minHeight: 5,
+                            backgroundColor: AppColors.black.withValues(
+                              alpha: 0.07,
+                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isCurrentUser
+                                  ? AppColors.primary
+                                  : AppColors.secondaryText.withValues(
+                                      alpha: 0.45,
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${entry.totalPoints}',
+                      style: textTheme.titleLarge?.copyWith(
+                        fontSize: 19,
+                        color: isCurrentUser
+                            ? AppColors.primary
+                            : AppColors.black,
+                      ),
+                    ),
+                    Text(
+                      'POINTS',
+                      style: textTheme.bodySmall?.copyWith(
+                        fontSize: 9,
+                        letterSpacing: 0.8,
+                        color: AppColors.secondaryText.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${entry.totalPoints}',
-                style: textTheme.titleLarge?.copyWith(
-                  fontSize: 19,
-                  color: isCurrentUser ? AppColors.primary : AppColors.black,
-                ),
-              ),
-              Text(
-                'POINTS',
-                style: textTheme.bodySmall?.copyWith(
-                  fontSize: 9,
-                  letterSpacing: 0.8,
-                  color: AppColors.secondaryText.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -170,7 +197,10 @@ class _MovementBadge extends StatelessWidget {
         ),
         Text(
           '${movement.abs()}',
-          style: textStyle?.copyWith(color: colour, fontWeight: FontWeight.w700),
+          style: textStyle?.copyWith(
+            color: colour,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );
