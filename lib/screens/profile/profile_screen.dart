@@ -25,6 +25,9 @@ import 'team_picker_sheet.dart';
 
 const String _missingValuePlaceholder = '—';
 
+typedef _SharingToggle =
+    void Function(SharingPreference preference, {required bool isOpen});
+
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -114,6 +117,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         .updateWeight(weightKg);
     if (!mounted) return;
     _reportOutcome(succeeded, 'Poids mis à jour');
+  }
+
+  Future<void> _toggleSharing(
+    SharingPreference preference, {
+    required bool isOpen,
+  }) async {
+    final succeeded = await ref
+        .read(profileEditingControllerProvider.notifier)
+        .setSharing(preference, isOpen: isOpen);
+    if (!mounted) return;
+    _reportOutcome(
+      succeeded,
+      isOpen
+          ? '${preference.label} : visible par vos contacts'
+          : '${preference.label} : plus personne ne le voit',
+    );
   }
 
   Future<String?> _promptForText({
@@ -250,6 +269,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         onPickAvatar: _pickAvatar,
         onEditName: () => _editName(data),
         onEditWeight: () => _editWeight(data),
+        onToggleSharing: _toggleSharing,
         onSignOut: _signOut,
         onDeleteAccount: _deleteAccount,
       ),
@@ -340,6 +360,7 @@ class _ProfileBody extends ConsumerStatefulWidget {
     required this.onPickAvatar,
     required this.onEditName,
     required this.onEditWeight,
+    required this.onToggleSharing,
     required this.onSignOut,
     required this.onDeleteAccount,
   });
@@ -349,6 +370,7 @@ class _ProfileBody extends ConsumerStatefulWidget {
   final VoidCallback onPickAvatar;
   final VoidCallback onEditName;
   final VoidCallback onEditWeight;
+  final _SharingToggle onToggleSharing;
   final VoidCallback onSignOut;
   final VoidCallback onDeleteAccount;
 
@@ -398,6 +420,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                 onPickAvatar: widget.onPickAvatar,
                 onEditName: widget.onEditName,
                 onEditWeight: widget.onEditWeight,
+                onToggleSharing: widget.onToggleSharing,
                 onSignOut: widget.onSignOut,
                 onDeleteAccount: widget.onDeleteAccount,
               ),
@@ -1077,6 +1100,7 @@ class _SettingsTab extends StatelessWidget {
     required this.onPickAvatar,
     required this.onEditName,
     required this.onEditWeight,
+    required this.onToggleSharing,
     required this.onSignOut,
     required this.onDeleteAccount,
   });
@@ -1086,6 +1110,7 @@ class _SettingsTab extends StatelessWidget {
   final VoidCallback onPickAvatar;
   final VoidCallback onEditName;
   final VoidCallback onEditWeight;
+  final _SharingToggle onToggleSharing;
   final VoidCallback onSignOut;
   final VoidCallback onDeleteAccount;
 
@@ -1125,11 +1150,39 @@ class _SettingsTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        // Said as what a contact ends up seeing, not as the name of a column:
+        // "lieux et trajets" does not warn anyone that opening it publishes
+        // where they run every evening.
+        RiseIn(
+          delay: staggerFor(3),
+          child: _Panel(
+            title: 'Ce que voient mes contacts',
+            child: Column(
+              children: [
+                for (final preference in SharingPreference.values)
+                  _SettingRow(
+                    icon: _sharingIcon(preference),
+                    label: preference.label,
+                    description: preference.exposes,
+                    isOn: profile.shares(preference),
+                    onTap: isSaving
+                        ? null
+                        : () => onToggleSharing(
+                            preference,
+                            isOpen: !profile.shares(preference),
+                          ),
+                    isLast: preference == SharingPreference.values.last,
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
         // Its own panel, below the edits: leaving and deleting are not settings
         // among others, and putting them one tap away from the weight field is
         // how they get hit by accident.
         RiseIn(
-          delay: staggerFor(3),
+          delay: staggerFor(4),
           child: _Panel(
             title: 'Session',
             child: Column(
@@ -1165,6 +1218,13 @@ class _SettingsTab extends StatelessWidget {
   }
 }
 
+IconData _sharingIcon(SharingPreference preference) {
+  return switch (preference) {
+    SharingPreference.history => Icons.history,
+    SharingPreference.locations => Icons.place_outlined,
+  };
+}
+
 /// The team row, which has to read the team list to name the current team.
 ///
 /// Its own widget so the rest of the settings stay a plain layout: only this
@@ -1197,6 +1257,8 @@ class _SettingRow extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.value,
+    this.description,
+    this.isOn,
     this.isDestructive = false,
     this.isLast = false,
   });
@@ -1206,6 +1268,14 @@ class _SettingRow extends StatelessWidget {
 
   /// Absent on a row that is an action rather than a value you can read.
   final String? value;
+
+  /// A second line under the label, for a row whose label alone would not say
+  /// what tapping it costs.
+  final String? description;
+
+  /// Set on a row that is a switch rather than a way into another screen: the
+  /// chevron then becomes the switch, and [onTap] flips it.
+  final bool? isOn;
   final VoidCallback? onTap;
 
   /// Draws the row in the primary red, which the identity reserves for calls to
@@ -1240,14 +1310,29 @@ class _SettingRow extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontWeight: isDestructive
-                        ? FontWeight.w700
-                        : FontWeight.w600,
-                    color: labelColour,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: isDestructive
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: labelColour,
+                      ),
+                    ),
+                    if (description != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        description!,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: AppColors.secondaryText.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (value != null)
@@ -1263,11 +1348,19 @@ class _SettingRow extends StatelessWidget {
                     ),
                   ),
                 ),
-              const Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: Color(0xFFB0B2BE),
-              ),
+              if (isOn == null)
+                const Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: Color(0xFFB0B2BE),
+                )
+              else
+                Switch(
+                  value: isOn!,
+                  // The row carries the same tap, so the switch never needs to
+                  // be hit precisely.
+                  onChanged: onTap == null ? null : (_) => onTap!(),
+                ),
             ],
           ),
         ),

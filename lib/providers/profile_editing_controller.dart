@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/profile.dart';
 import 'auth_provider.dart';
 import 'home_summary_provider.dart';
 import 'profile_provider.dart';
@@ -39,6 +40,30 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
           .read(profileRepositoryProvider)
           .updateWeight(userId: userId, weightKg: weightKg);
     });
+  }
+
+  /// Records what the member lets their contacts read.
+  ///
+  /// The switch is only the choice: the database is what withholds a session or
+  /// a route from another account, so nothing here guards anything.
+  Future<bool> setSharing(
+    SharingPreference preference, {
+    required bool isOpen,
+  }) {
+    return _run(
+      (userId) async {
+        await ref
+            .read(profileRepositoryProvider)
+            .updateSharing(
+              userId: userId,
+              preference: preference,
+              isOpen: isOpen,
+            );
+      },
+      // A sharing switch moves what *other* accounts may read; the member's own
+      // home screen and ranking row show exactly the same figures either way.
+      refreshesHomeAndRanking: false,
+    );
   }
 
   Future<bool> changeAvatar(XFile picture, {required DateTime pickedAt}) {
@@ -78,7 +103,10 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
     }
   }
 
-  Future<bool> _run(Future<void> Function(String userId) write) async {
+  Future<bool> _run(
+    Future<void> Function(String userId) write, {
+    bool refreshesHomeAndRanking = true,
+  }) async {
     state = const AsyncValue<void>.loading();
     final keepAliveLink = ref.keepAlive();
     try {
@@ -93,12 +121,14 @@ class ProfileEditingController extends AutoDisposeAsyncNotifier<void> {
 
       await write(signedInUser.id);
 
+      ref.invalidate(currentProfileProvider);
       // The name and the picture are shown on the home screen and next to every
       // ranking row, so both have to be refetched or they keep the old value
       // until the app restarts.
-      ref.invalidate(currentProfileProvider);
-      ref.invalidate(globalRankingProvider);
-      ref.invalidate(homeSummaryProvider);
+      if (refreshesHomeAndRanking) {
+        ref.invalidate(globalRankingProvider);
+        ref.invalidate(homeSummaryProvider);
+      }
 
       state = const AsyncValue<void>.data(null);
       return true;

@@ -13,20 +13,6 @@ import '../../support/test_fixtures.dart';
 
 final _today = DateTime(2026, 3, 20);
 
-Profile buildProfile({
-  String name = 'Maxime Lenormand',
-  double? weightKg = 78,
-  String? avatarUrl,
-}) {
-  return Profile(
-    id: 'user-1',
-    name: name,
-    weightKg: weightKg,
-    avatarUrl: avatarUrl,
-    createdAt: DateTime(2026, 1, 8),
-  );
-}
-
 /// The screen is driven through the sessions the app really holds, so the
 /// period selector re-totals genuine data rather than a stubbed figure.
 List<Session> buildDefaultSessions() {

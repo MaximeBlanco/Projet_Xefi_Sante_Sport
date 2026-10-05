@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:monapp/models/gps_point.dart';
+import 'package:monapp/models/profile.dart';
 import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/models/session.dart';
 import 'package:monapp/models/sport.dart';
@@ -27,6 +28,30 @@ Sport buildSport({
     isGpsTrackable: isGpsTrackable,
     externalActivityName: externalActivityName,
     met: met,
+  );
+}
+
+/// The sharing defaults are the column defaults, so a profile built here is the
+/// one a brand new account gets.
+Profile buildProfile({
+  String id = 'user-1',
+  String name = 'Maxime Lenormand',
+  double? weightKg = 78,
+  String? teamId,
+  String? avatarUrl,
+  bool sharesHistory = true,
+  bool sharesLocations = false,
+  DateTime? createdAt,
+}) {
+  return Profile(
+    id: id,
+    name: name,
+    weightKg: weightKg,
+    teamId: teamId,
+    avatarUrl: avatarUrl,
+    sharesHistory: sharesHistory,
+    sharesLocations: sharesLocations,
+    createdAt: createdAt ?? DateTime(2026, 1, 8),
   );
 }
 

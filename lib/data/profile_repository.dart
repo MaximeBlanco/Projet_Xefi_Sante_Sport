@@ -36,6 +36,22 @@ class ProfileRepository {
         .eq('id', userId);
   }
 
+  /// Opens or closes one of the two sharing switches.
+  ///
+  /// One column at a time, never both: they are independent, and writing the
+  /// pair would let a screen holding a stale copy of one reopen something its
+  /// owner had just closed.
+  Future<void> updateSharing({
+    required String userId,
+    required SharingPreference preference,
+    required bool isOpen,
+  }) {
+    return _client
+        .from('profiles')
+        .update({preference.column: isOpen})
+        .eq('id', userId);
+  }
+
   /// Uploads the picture and stores its public URL on the profile, returning
   /// that URL.
   ///
