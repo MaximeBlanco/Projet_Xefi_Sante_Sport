@@ -59,7 +59,7 @@ class LocationTracker {
     if (permission == LocationPermission.deniedForever) {
       throw const LocationUnavailableException(
         "L'accès à la position est bloqué. Autorisez-le dans les réglages de "
-        "votre téléphone pour suivre un parcours.",
+        "l'application ou du navigateur pour suivre un parcours.",
       );
     }
 
