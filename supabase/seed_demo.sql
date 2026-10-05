@@ -116,9 +116,18 @@ on conflict (id) do update
       team_id = excluded.team_id,
       avatar_url = excluded.avatar_url;
 
--- Their history. Enough sessions, spread over the last five weeks, for the
+-- Their history. Enough sessions, spread over the last four weeks, for the
 -- individual leaderboard to have a shape and for the six-month chart to have
 -- something in it. Football and basket-ball are what feed the team standings.
+--
+-- The rotation runs through all nine sports: a sport nobody ever practised
+-- shows an empty card and an empty filter, which reads as a broken screen
+-- rather than as a quiet week.
+--
+-- Everyone's most recent session is dated the day the demo is opened, so the
+-- weekly goal on the home screen is never empty. Three days ago would not do:
+-- the week starts on Monday, so on a Monday morning that lands in the week
+-- before and the goal reads zero on the very first screen.
 delete from sessions where id >= '00000000-0000-0000-0000-000000005000'
                        and id <= '00000000-0000-0000-0000-000000005fff';
 
@@ -128,28 +137,31 @@ select
   -- person would collide with the first.
   (
     '00000000-0000-0000-0000-0000000050'
-    || lpad(to_hex((person.rn - 1) * 9 + series.n), 2, '0')
+    || lpad(to_hex((person.rn - 1) * 11 + series.n), 2, '0')
   )::uuid,
   person.id,
   sport.id,
-  (current_date - ((n * 3 + person.offset_days) % 34))::date,
+  (current_date - (case
+                    when series.n = 1 then 0
+                    else (series.n - 1) * 3 + person.rn % 3
+                  end)::int)::date,
   duration,
   duration,
   null
 from (
-  select id, row_number() over (order by name) as rn,
-         (row_number() over (order by name) * 2)::int as offset_days
+  select id, row_number() over (order by name) as rn
   from demo_people
 ) as person
 cross join lateral (
-  select generate_series(1, 9) as n
+  select generate_series(1, 11) as n
 ) as series
 cross join lateral (
   -- Rotates through the sports, weighted so the two collective ones come up
   -- often enough for the team leaderboard to be worth looking at.
   select id from sports
   where name = (array['Football', 'Basket-ball', 'Course à pied', 'Musculation',
-                      'Football', 'Basket-ball', 'Natation', 'Vélo', 'Tennis'])[series.n]
+                      'Football', 'Basket-ball', 'Natation', 'Vélo', 'Tennis',
+                      'Marche', 'Rameur'])[series.n]
   limit 1
 ) as sport
 cross join lateral (
