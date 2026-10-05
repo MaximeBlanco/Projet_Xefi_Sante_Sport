@@ -23,7 +23,7 @@ V de la constitution les rend non négociables.
 
 Le projet existe, il n'y a rien à initialiser.
 
-- [ ] T001 Vérifier que la stack locale est à jour : `npx supabase@latest db reset`, 9 migrations appliquées, seed chargé
+- [x] T001 Vérifier que la stack locale est à jour : `npx supabase@latest db reset`, 9 migrations appliquées, seed chargé
 
 ---
 
@@ -36,16 +36,16 @@ avant.
 tous cessent de l'être. Elle se livre avec T005, sans quoi le classement général
 se vide.
 
-- [ ] T002 Migration `supabase/migrations/20261005100000_profile_sharing_preferences.sql` : ajouter `shares_history boolean not null default true` et `shares_locations boolean not null default false` sur `profiles`
-- [ ] T003 [P] Dans la même migration, contraindre `contacts` : `check (requester_id <> addressee_id)` et unicité de la paire quel que soit le sens — `unique (least(requester_id, addressee_id), greatest(requester_id, addressee_id))`
-- [ ] T004 Migration `supabase/migrations/20261005110000_contact_access_rules.sql` : remplacer la politique `SELECT` de `sessions` (`using (true)`) par « ses propres séances, ou celles d'un contact accepté qui partage son historique »
-- [ ] T005 Dans la même migration, passer `rankings_global` et `rankings_teams` en `security_invoker = false`, pour qu'un classement continue d'agréger toutes les séances sans en exposer une seule ligne
-- [ ] T006 Dans la même migration, créer la vue `visible_sessions` qui annule `venue_name`, `venue_kind`, `venue_osm_id`, `route` et `elevation_gain_m` quand leur auteur n'a pas ouvert ses lieux
-- [ ] T007 Dans la même migration, créer la vue `rankings_contacts`, construite comme `rankings_global` mais restreinte à `auth.uid()` et à ses contacts acceptés
-- [ ] T008 [P] `lib/models/profile.dart` : ajouter `sharesHistory` et `sharesLocations`, lecture et écriture JSON
-- [ ] T009 [P] `lib/models/contact.dart` : compléter avec l'identifiant de l'autre membre et un accesseur disant si le lien est en attente ou accepté
-- [ ] T010 [P] `lib/models/member_summary.dart` : une ligne de résultat de recherche — identifiant, nom, avatar
-- [ ] T011 `test/sql/contact_access_test.sql` : le script qui se fait passer pour chaque rôle et vérifie T004 et T006 — c'est lui qui atteste SC-003
+- [x] T002 Migration `supabase/migrations/20261005100000_profile_sharing_preferences.sql` : ajouter `shares_history boolean not null default true` et `shares_locations boolean not null default false` sur `profiles`
+- [x] T003 [P] Dans la même migration, contraindre `contacts` : `check (requester_id <> addressee_id)` et unicité de la paire quel que soit le sens — `unique (least(requester_id, addressee_id), greatest(requester_id, addressee_id))`
+- [x] T004 Migration `supabase/migrations/20261005110000_contact_access_rules.sql` : remplacer la politique `SELECT` de `sessions` (`using (true)`) par « ses propres séances, ou celles d'un contact accepté qui partage son historique »
+- [x] T005 Dans la même migration, passer `rankings_global` et `rankings_teams` en `security_invoker = false`, pour qu'un classement continue d'agréger toutes les séances sans en exposer une seule ligne
+- [x] T006 Dans la même migration, créer la vue `visible_sessions` qui annule `venue_name`, `venue_kind`, `venue_osm_id`, `route` et `elevation_gain_m` quand leur auteur n'a pas ouvert ses lieux
+- [x] T007 Dans la même migration, créer la vue `rankings_contacts`, construite comme `rankings_global` mais restreinte à `auth.uid()` et à ses contacts acceptés
+- [x] T008 [P] `lib/models/profile.dart` : ajouter `sharesHistory` et `sharesLocations`, lecture et écriture JSON
+- [x] T009 [P] `lib/models/contact.dart` : compléter avec l'identifiant de l'autre membre et un accesseur disant si le lien est en attente ou accepté
+- [x] T010 [P] `lib/models/member_summary.dart` : une ligne de résultat de recherche — identifiant, nom, avatar
+- [x] T011 `test/sql/contact_access_test.sql` : le script qui se fait passer pour chaque rôle et vérifie T004 et T006 — c'est lui qui atteste SC-003
 
 **Checkpoint** : `flutter analyze` propre, 216 tests toujours verts, classement général inchangé dans l'app.
 
@@ -61,15 +61,15 @@ valeur.
 
 **Test indépendant** : un compte envoie, l'autre accepte, le lien existe des deux côtés.
 
-- [ ] T012 [US2] `lib/data/contact_repository.dart` : `sendRequest`, `acceptRequest`, `pendingReceived`, `acceptedContacts`, `searchMembers(nom)`
-- [ ] T013 [US2] `lib/providers/contact_provider.dart` : providers des contacts acceptés et des demandes reçues
-- [ ] T014 [US2] `lib/providers/contact_controller.dart` : les actions, sur le modèle de `delete_session_controller.dart`
-- [ ] T015 [P] [US2] `test/data/contact_repository_test.dart` : demande à soi-même refusée, demande en double refusée, demande vers un contact existant refusée
-- [ ] T016 [US2] `lib/screens/contacts/contacts_screen.dart` : contacts acceptés et demandes reçues, avec l'état vide qui dit comment le remplir (FR-019)
-- [ ] T017 [US2] `lib/screens/contacts/member_search_screen.dart` : recherche par nom, envoi d'une demande, état « aucun résultat »
-- [ ] T018 [US2] `lib/screens/rankings/global_ranking_screen.dart` : rendre une ligne de classement ouvrable sur la fiche d'un membre
-- [ ] T019 [P] [US2] `test/screens/contacts/contacts_screen_test.dart` : liste, demandes, acceptation, état vide
-- [ ] T020 [US2] Donner accès à l'écran contacts depuis le shell ou le profil — à trancher en implémentant, sans ajouter d'onglet au `BottomNavigationBar` qui en compte déjà quatre
+- [x] T012 [US2] `lib/data/contact_repository.dart` : `sendRequest`, `acceptRequest`, `pendingReceived`, `acceptedContacts`, `searchMembers(nom)`
+- [x] T013 [US2] `lib/providers/contact_provider.dart` : providers des contacts acceptés et des demandes reçues
+- [x] T014 [US2] `lib/providers/contact_controller.dart` : les actions, sur le modèle de `delete_session_controller.dart`
+- [x] T015 [P] [US2] `test/data/contact_repository_test.dart` : demande à soi-même refusée, demande en double refusée, demande vers un contact existant refusée
+- [x] T016 [US2] `lib/screens/contacts/contacts_screen.dart` : contacts acceptés et demandes reçues, avec l'état vide qui dit comment le remplir (FR-019)
+- [x] T017 [US2] `lib/screens/contacts/member_search_screen.dart` : recherche par nom, envoi d'une demande, état « aucun résultat »
+- [x] T018 [US2] `lib/screens/rankings/global_ranking_screen.dart` : rendre une ligne de classement ouvrable sur la fiche d'un membre
+- [x] T019 [P] [US2] `test/screens/contacts/contacts_screen_test.dart` : liste, demandes, acceptation, état vide
+- [x] T020 [US2] Donner accès à l'écran contacts depuis le shell ou le profil — à trancher en implémentant, sans ajouter d'onglet au `BottomNavigationBar` qui en compte déjà quatre
 
 **Checkpoint** : deux comptes peuvent se lier de bout en bout.
 
@@ -81,11 +81,11 @@ valeur.
 
 **Test indépendant** : avec deux comptes liés et des séances des deux côtés, la portée « Contacts » n'affiche qu'eux, dans le bon ordre.
 
-- [ ] T021 [US1] `lib/data/ranking_repository.dart` : lire `rankings_contacts`
-- [ ] T022 [US1] `lib/models/ranking_entry.dart` : réutiliser tel quel si la vue renvoie les mêmes colonnes — ne pas dupliquer le modèle
-- [ ] T023 [US1] `lib/screens/rankings/global_ranking_screen.dart` : troisième portée dans le sélecteur existant, sans redessiner le podium
-- [ ] T024 [P] [US1] `test/screens/rankings/contacts_ranking_test.dart` : seulement les contacts acceptés, ordre par points, demande en attente absente
-- [ ] T025 [US1] État vide du classement contacts : inviter à ajouter quelqu'un (FR-019)
+- [x] T021 [US1] `lib/data/ranking_repository.dart` : lire `rankings_contacts`
+- [x] T022 [US1] `lib/models/ranking_entry.dart` : réutiliser tel quel si la vue renvoie les mêmes colonnes — ne pas dupliquer le modèle
+- [x] T023 [US1] `lib/screens/rankings/global_ranking_screen.dart` : troisième portée dans le sélecteur existant, sans redessiner le podium
+- [x] T024 [P] [US1] `test/screens/rankings/contacts_ranking_test.dart` : seulement les contacts acceptés, ordre par points, demande en attente absente
+- [x] T025 [US1] État vide du classement contacts : inviter à ajouter quelqu'un (FR-019)
 
 **Checkpoint** : MVP livrable. On peut ajouter un collègue et se mesurer à lui.
 
@@ -95,11 +95,11 @@ valeur.
 
 **But** : les deux interrupteurs. Passe avant le récit 4, sinon la carte d'un contact est vide pour tout le monde sans moyen de l'ouvrir.
 
-- [ ] T026 [US5] `lib/data/profile_repository.dart` : mettre à jour les deux préférences
-- [ ] T027 [US5] `lib/providers/profile_editing_controller.dart` : les actions correspondantes
-- [ ] T028 [US5] `lib/screens/profile/profile_screen.dart` : deux `_SettingRow` dans l'onglet Réglages, avec un texte qui dit ce que chacun expose
-- [ ] T029 [P] [US5] `test/screens/profile/sharing_settings_test.dart` : les deux interrupteurs, leur valeur par défaut, et l'effet de les basculer
-- [ ] T030 [P] [US5] Étendre `test/sql/contact_access_test.sql` : les quatre combinaisons des deux réglages (SC-005)
+- [x] T026 [US5] `lib/data/profile_repository.dart` : mettre à jour les deux préférences
+- [x] T027 [US5] `lib/providers/profile_editing_controller.dart` : les actions correspondantes
+- [x] T028 [US5] `lib/screens/profile/profile_screen.dart` : deux `_SettingRow` dans l'onglet Réglages, avec un texte qui dit ce que chacun expose
+- [x] T029 [P] [US5] `test/screens/profile/sharing_settings_test.dart` : les deux interrupteurs, leur valeur par défaut, et l'effet de les basculer
+- [x] T030 [P] [US5] Étendre `test/sql/contact_access_test.sql` : les quatre combinaisons des deux réglages (SC-005)
 
 **Checkpoint** : un membre peut fermer ses lieux, et ça se vérifie depuis l'autre compte.
 
