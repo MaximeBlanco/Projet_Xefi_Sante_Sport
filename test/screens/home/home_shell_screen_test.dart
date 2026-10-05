@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:monapp/models/contact.dart';
 import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/models/session.dart';
 import 'package:monapp/providers/auth_provider.dart';
+import 'package:monapp/providers/contact_provider.dart';
 import 'package:monapp/providers/ranking_provider.dart';
 import 'package:monapp/providers/session_provider.dart';
+import 'package:monapp/screens/contacts/contacts_screen.dart';
 import 'package:monapp/screens/home/home_shell_screen.dart';
 
 import '../../support/test_fixtures.dart';
@@ -14,6 +17,8 @@ List<Override> buildEmptyDataOverrides() {
   return [
     userSessionsProvider.overrideWith((ref) => const <Session>[]),
     globalRankingProvider.overrideWith((ref) => const <RankingEntry>[]),
+    contactsRankingProvider.overrideWith((ref) => const <RankingEntry>[]),
+    contactsProvider.overrideWith((ref) => const <Contact>[]),
     currentUserProvider.overrideWithValue(buildSignedInUser()),
   ];
 }
@@ -98,6 +103,31 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsNothing);
+    });
+
+    // The bottom bar is full at four destinations, so contacts hang off the
+    // leaderboard — the screen they change — rather than off a fifth tab.
+    testWidgets('offers the contacts action on the leaderboard tab only',
+        (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: buildEmptyDataOverrides(),
+          child: const HomeShellScreen(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byIcon(Icons.people_outline), findsNothing);
+
+      await tester.tap(find.text('Classement'));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.people_outline), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.people_outline));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ContactsScreen), findsOneWidget);
     });
   });
 }

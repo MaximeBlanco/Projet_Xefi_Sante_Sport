@@ -13,6 +13,7 @@ class AsyncValueView<T> extends StatelessWidget {
     required this.builder,
     this.onRetry,
     this.emptyMessage,
+    this.emptyAction,
     this.isEmpty,
   });
 
@@ -20,6 +21,11 @@ class AsyncValueView<T> extends StatelessWidget {
   final Widget Function(T data) builder;
   final VoidCallback? onRetry;
   final String? emptyMessage;
+
+  /// The way out of an empty screen, for the lists a user cannot fill by
+  /// waiting: a contact list stays empty until somebody goes and asks for one.
+  final Widget? emptyAction;
+
   final bool Function(T data)? isEmpty;
 
   @override
@@ -34,6 +40,7 @@ class AsyncValueView<T> extends StatelessWidget {
         if (isEmpty?.call(data) ?? false) {
           return _EmptyState(
             message: emptyMessage ?? 'Aucune donnée à afficher pour le moment.',
+            action: emptyAction,
           );
         }
         return builder(data);
@@ -97,19 +104,26 @@ class _ErrorState extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.message});
+  const _EmptyState({required this.message, this.action});
 
   final String message;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyLarge,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            if (action != null) ...[const SizedBox(height: 16), action!],
+          ],
         ),
       ),
     );

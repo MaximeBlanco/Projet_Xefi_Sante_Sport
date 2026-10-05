@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/content_width.dart';
 import '../../widgets/xefi_logo.dart';
+import '../contacts/contacts_screen.dart';
 import '../profile/profile_screen.dart';
 import '../rankings/global_ranking_screen.dart';
 import 'home_dashboard_screen.dart';
@@ -21,6 +22,7 @@ class HomeShellScreen extends ConsumerStatefulWidget {
 class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
   static const _homeTabIndex = 0;
   static const _sessionsTabIndex = 1;
+  static const _rankingTabIndex = 2;
 
   int _selectedTabIndex = _homeTabIndex;
 
@@ -59,6 +61,17 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
       appBar: AppBar(
         title: const XefiLockup(variant: XefiLogoVariant.light, logoHeight: 20),
         actions: [
+          // The bottom bar is full at four destinations, and the profile tab
+          // belongs to the account rather than to other people. Contacts hang
+          // off the leaderboard instead, which is the screen they change: it is
+          // where you meet a colleague worth adding, and where adding one shows
+          // up straight away as a third scope.
+          if (_selectedTabIndex == _rankingTabIndex)
+            IconButton(
+              icon: const Icon(Icons.people_outline),
+              tooltip: 'Contacts',
+              onPressed: () => openContactsScreen(context),
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Déconnexion',
