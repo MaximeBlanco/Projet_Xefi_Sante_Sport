@@ -17,7 +17,7 @@
   ·
   <a href="#aperçu">Aperçu</a>
   ·
-  <a href="#démarrage-rapide">Démarrer en 2 commandes</a>
+  <a href="#démarrage-rapide">Démarrer en 3 commandes</a>
   ·
   <a href="CAHIER_DES_CHARGES.md">Cahier des charges</a>
 </p>
@@ -71,7 +71,7 @@ Captures prises sur le jeu de démonstration, avec le compte `camille.roussel`.
 
 | Je veux… | Lien | Ce qu'il faut installer |
 | --- | --- | --- |
-| **Juste essayer l'app** | [**Télécharger l'APK Android**](https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/releases/latest) | Un téléphone Android — mais voir l'avertissement du démarrage rapide : cet APK vise une base qui n'existe plus |
+| **Juste essayer l'app** | [**Télécharger l'APK Android**](https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/releases/latest) | Un téléphone Android — attention, l'APK déjà publié a été compilé contre une base hébergée qui n'existe plus ; recompile-le depuis le code pour viser ta stack locale |
 | **Lire ou modifier le code** | [**Télécharger le code en .zip**](https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/archive/refs/heads/main.zip) | Flutter |
 | **Suivre les mises à jour** | `git clone` ci-dessous | Git + Flutter |
 
@@ -120,31 +120,31 @@ Docker Desktop démarré, puis :
 
 ```
 npx supabase@latest start
-cp dart_define.example.json dart_define.web.json
-```
-
-`supabase start` affiche `API_URL` et `PUBLISHABLE_KEY` à la fin. Reporte-les
-dans `dart_define.web.json` — l'URL est `http://127.0.0.1:54321` pour un
-navigateur. Puis :
-
-```
 flutter pub get
-flutter run -d chrome --dart-define-from-file=dart_define.web.json
+flutter run -d chrome
 ```
+
+C'est tout : **aucun fichier à créer, aucune clé à reporter**. Un clone neuf
+tourne tel quel.
 
 La base arrive migrée **et peuplée** : `supabase/config.toml` charge
 `supabase/seed_demo.sql` à chaque `supabase start` ou `supabase db reset`, donc
 il y a des équipes, des collègues, des séances et un calendrier dès le premier
 lancement.
 
-> `lib/core/config/env.dart` porte en valeur par défaut l'adresse d'un projet
-> Supabase hébergé qui **n'existe plus**. Lancer l'app sans
-> `--dart-define-from-file` échoue donc à joindre sa base, et l'APK publié dans
-> les releases est concerné de la même façon. Les clés `anon` d'un projet
-> Supabase sont publiques par nature — elles partent de toute façon dans le
-> bundle JavaScript de n'importe quelle app web — et ce qui protège les données
-> est le row level security, activé sur chaque table ; la clé `service_role`,
-> elle, n'apparaît nulle part.
+> Pourquoi ça marche sans rien configurer : `lib/core/config/env.dart` vise par
+> défaut la stack locale, `http://127.0.0.1:54321` avec la clé publiable
+> `sb_publishable_…`. Ces valeurs sont celles que Supabase publie comme valeurs
+> de démonstration : elles sont **identiques sur toutes les machines** qui
+> lancent `supabase start` avec la configuration par défaut, et la stack
+> n'écoute que sur la boucle locale. Rien de secret là-dedans, d'où leur
+> présence dans le dépôt. La clé `service_role` et la clé secrète, elles, qui
+> contournent le row level security, n'apparaissent nulle part.
+
+Deux cas sortent de ce chemin par défaut et demandent un
+`--dart-define-from-file` : [l'émulateur Android](#émulateur-android--le-seul-cas-qui-exige-un-fichier),
+qui ne joint pas `127.0.0.1`, et
+[un projet Supabase hébergé](#configuration--pointer-sur-ton-propre-projet-supabase).
 
 ### Comptes de démonstration
 
@@ -156,15 +156,42 @@ par exemple `camille.roussel@demo.xefi.local` ou `yanis.chevalier@demo.xefi.loca
 Ce sont des personnes inventées, sur un domaine `.local` qui ne peut pas
 recevoir de courrier, et leurs portraits sont générés, pas photographiés.
 
+## Émulateur Android — le seul cas qui exige un fichier
+
+`127.0.0.1` ne veut pas dire la même chose pour un émulateur Android : c'est
+l'émulateur lui-même, pas ta machine. L'alias à utiliser est `10.0.2.2`, donc
+la valeur par défaut d'`env.dart` ne convient pas et il faut la surcharger.
+
+Copie `dart_define.example.json` en `dart_define.json` (ignoré par git) — il
+porte déjà les bonnes valeurs, il n'y a rien à remplir :
+
+```json
+{
+  "SUPABASE_URL": "http://10.0.2.2:54321",
+  "SUPABASE_ANON_KEY": "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
+}
+```
+
+```
+flutter run --dart-define-from-file=dart_define.json
+```
+
+Si `npx supabase status` affiche une `PUBLISHABLE_KEY` différente de celle-ci
+— une configuration locale modifiée, par exemple — c'est celle affichée qui
+fait foi.
+
+Un appareil Android physique suit la même logique avec l'IP de ta machine sur
+le réseau local (`192.168.x.y`) à la place de `10.0.2.2`.
+
 ## Configuration — pointer sur ton propre projet Supabase
 
 Le démarrage rapide fait tourner l'app sur la stack locale. Pour viser un
 projet Supabase hébergé à la place — le tien, ou un projet d'équipe — ces deux
-valeurs prennent le pas sur celles de `env.dart` :
+valeurs prennent le pas sur celles d'`env.dart` :
 
 1. Copie `dart_define.example.json` en `dart_define.json` (déjà ignoré par
    git).
-2. Remplis `SUPABASE_URL` et `SUPABASE_ANON_KEY` avec les valeurs de ton
+2. Remplace `SUPABASE_URL` et `SUPABASE_ANON_KEY` par les valeurs de ton
    projet Supabase (Project Settings → API).
 3. Lance l'app :
 
@@ -247,8 +274,8 @@ sans clé api-ninjas et sans réseau.
 ## Développement 100 % local — le détail
 
 Le démarrage rapide plus haut suffit pour lancer l'app. Cette section donne ce
-qu'il laisse de côté : les deux hôtes à utiliser selon la cible, l'Edge
-Function, et la simulation GPS.
+qu'il laisse de côté : les hôtes à utiliser selon la cible, l'Edge Function, et
+la simulation GPS.
 
 ```
 npx supabase@latest start
@@ -256,34 +283,19 @@ npx supabase@latest start
 
 Les migrations de `supabase/migrations/` s'appliquent automatiquement, donc les
 9 sports sont là dès le premier démarrage. La commande affiche à la fin
-`API_URL` et `PUBLISHABLE_KEY` : reporte-les dans `dart_define.json`, mais
-**avec l'hôte `10.0.2.2` au lieu de `127.0.0.1`** — c'est l'alias par lequel
-l'émulateur Android joint la machine hôte :
-
-```json
-{
-  "SUPABASE_URL": "http://10.0.2.2:54321",
-  "SUPABASE_ANON_KEY": "<PUBLISHABLE_KEY affichee par supabase start>"
-}
-```
+`API_URL` et `PUBLISHABLE_KEY` : ce sont déjà les valeurs par défaut
+d'`env.dart`, il n'y a rien à reporter nulle part — sauf pour l'émulateur
+Android, qui joint la machine hôte par l'alias `10.0.2.2` et a donc besoin de
+son `dart_define.json` ([section plus haut](#émulateur-android--le-seul-cas-qui-exige-un-fichier)).
 
 ### Lancer dans le navigateur
 
 L'app tourne aussi en web, ce qui évite de démarrer un émulateur pour montrer
-l'interface. Un seul piège : `10.0.2.2` est l'alias de l'émulateur Android et
-ne veut rien dire pour un navigateur, qui doit viser `127.0.0.1` directement.
-D'où un second fichier de configuration, `dart_define.web.json` (ignoré par git
-comme l'autre) :
-
-```json
-{
-  "SUPABASE_URL": "http://127.0.0.1:54321",
-  "SUPABASE_ANON_KEY": "<PUBLISHABLE_KEY affichee par supabase start>"
-}
-```
+l'interface. Le navigateur vise `127.0.0.1` — la valeur par défaut — donc aucun
+fichier de configuration n'entre en jeu :
 
 ```
-flutter run -d chrome --web-port=8080 --dart-define-from-file=dart_define.web.json
+flutter run -d chrome --web-port=8080
 ```
 
 Cette commande ouvre elle-même une fenêtre Chrome, et **fermer cet onglet arrête
@@ -292,7 +304,7 @@ garder le serveur en vie et ouvrir l'URL dans le navigateur déjà ouvert, vise 
 device `web-server` plutôt que `chrome`, puis va sur http://127.0.0.1:8080 :
 
 ```
-flutter run -d web-server --web-port=8080 --web-hostname=127.0.0.1 --dart-define-from-file=dart_define.web.json
+flutter run -d web-server --web-port=8080 --web-hostname=127.0.0.1
 ```
 
 Ce qui change par rapport au mobile : le suivi GPS passe par la géolocalisation
