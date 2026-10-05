@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/content_width.dart';
 import '../../widgets/xefi_logo.dart';
 import '../profile/profile_screen.dart';
 import '../rankings/global_ranking_screen.dart';
@@ -65,7 +66,12 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           ),
         ],
       ),
-      body: IndexedStack(index: _selectedTabIndex, children: tabScreens),
+      // Every tab is capped here rather than screen by screen: they all sit
+      // in this one body, and a cap each would drift apart the moment a new
+      // tab is added.
+      body: ContentWidth(
+        child: IndexedStack(index: _selectedTabIndex, children: tabScreens),
+      ),
       floatingActionButton: _selectedTabIndex == _sessionsTabIndex
           ? FloatingActionButton.extended(
               onPressed: _openRecordSessionScreen,
