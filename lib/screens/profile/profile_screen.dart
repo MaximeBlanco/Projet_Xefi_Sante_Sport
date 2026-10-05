@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/domain/achievement.dart';
 import '../../core/domain/body_weight_range.dart';
 import '../../core/domain/session_duration.dart';
+import '../../core/domain/stats_period.dart';
 import '../../core/localization/app_locale.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/profile.dart';
@@ -476,7 +477,7 @@ class _TabSelector extends StatelessWidget {
   }
 }
 
-class _ActivityTab extends StatelessWidget {
+class _ActivityTab extends ConsumerWidget {
   const _ActivityTab({required this.stats});
 
   final ProfileStats stats;
@@ -491,8 +492,34 @@ class _ActivityTab extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final period = ref.watch(statsPeriodProvider);
+    final periodStats = ref.watch(periodProfileStatsProvider);
+
     final panels = <Widget>[
+      _Panel(
+        title: 'Totaux',
+        subtitle: period.label,
+        child: Column(
+          children: [
+            // Above the figures rather than inside them, so the control the
+            // user just tapped never moves out from under their finger.
+            _PeriodSelector(
+              selected: period,
+              onSelected: (chosen) =>
+                  ref.read(statsPeriodProvider.notifier).state = chosen,
+            ),
+            const SizedBox(height: 16),
+            periodStats.maybeWhen(
+              data: (data) => _PeriodTotals(stats: data, period: period),
+              orElse: () => const SizedBox(
+                height: 64,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ],
+        ),
+      ),
       _Panel(
         title: 'Résumé du mois',
         subtitle: _monthLabel,
@@ -540,6 +567,109 @@ class _ActivityTab extends StatelessWidget {
     );
   }
 }
+
+class _PeriodSelector extends StatelessWidget {
+  const _PeriodSelector({required this.selected, required this.onSelected});
+
+  final StatsPeriod selected;
+  final ValueChanged<StatsPeriod> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<StatsPeriod>(
+      segments: [
+        for (final period in StatsPeriod.values)
+          ButtonSegment<StatsPeriod>(
+            value: period,
+            label: Text(period.label),
+          ),
+      ],
+      selected: {selected},
+      showSelectedIcon: false,
+      onSelectionChanged: (selection) => onSelected(selection.first),
+      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+    );
+  }
+}
+
+/// The figures for the chosen period, in the same cells the month summary uses
+/// so switching between the two panels does not feel like changing app.
+
+class _PeriodTotals extends StatelessWidget {
+  const _PeriodTotals({required this.stats, required this.period});
+
+  final ProfileStats stats;
+  final StatsPeriod period;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!stats.hasSessions) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          period.emptyMessage,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      );
+    }
+
+    final distanceKm = stats.totalDistanceKm;
+
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SummaryCell(
+              label: 'Points',
+              value: '${stats.totalPoints}',
+              count: stats.totalPoints,
+            ),
+            const _CellDivider(),
+            _SummaryCell(
+              label: 'Séances',
+              value: '${stats.sessionCount}',
+              count: stats.sessionCount,
+            ),
+            const _CellDivider(),
+            _SummaryCell(
+              label: 'Durée',
+              value: SessionDuration.describeMinutes(stats.totalDurationMin),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SummaryCell(
+              label: 'Dépense',
+              value: stats.hasCaloriesData
+                  ? '${stats.totalCaloriesBurned.round()} kcal'
+                  : _missingValuePlaceholder,
+            ),
+            const _CellDivider(),
+            // A dash, not a zero: a week of swimming is not a week of zero
+            // kilometres, it is a week nothing measured distance.
+            _SummaryCell(
+              label: 'Distance',
+              value: distanceKm == null
+                  ? _missingValuePlaceholder
+                  : '${distanceKm.toStringAsFixed(1)} km',
+            ),
+            const _CellDivider(),
+            _SummaryCell(
+              label: 'Moyenne',
+              value: SessionDuration.describeMinutes(stats.averageDurationMin),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 
 class _BadgesTab extends StatelessWidget {
   const _BadgesTab({required this.stats});

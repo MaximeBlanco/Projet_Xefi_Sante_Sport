@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:monapp/models/profile.dart';
-import 'package:monapp/models/profile_stats.dart';
 import 'package:monapp/models/session.dart';
 import 'package:monapp/providers/profile_provider.dart';
-import 'package:monapp/providers/profile_stats_provider.dart';
+import 'package:monapp/providers/session_provider.dart';
+import 'package:monapp/providers/weekly_health_provider.dart';
 import 'package:monapp/screens/profile/profile_screen.dart';
 import 'package:monapp/widgets/member_card.dart';
 
@@ -28,37 +28,37 @@ Profile buildProfile({
   );
 }
 
-ProfileStats buildStats({List<Session>? sessions}) {
-  return ProfileStats.fromSessions(
-    sessions ??
-        [
-          buildSession(
-            id: 'a',
-            sportId: 'course',
-            durationMin: 45,
-            points: 45,
-            date: DateTime(2026, 3, 19),
-            sport: buildSport(id: 'course', name: 'Course à pied'),
-          ),
-          buildSession(
-            id: 'b',
-            sportId: 'velo',
-            durationMin: 90,
-            points: 90,
-            date: DateTime(2026, 3, 20),
-            sport: buildSport(id: 'velo', name: 'Vélo', emoji: '🚴'),
-          ),
-        ],
-    _today,
-  );
+/// The screen is driven through the sessions the app really holds, so the
+/// period selector re-totals genuine data rather than a stubbed figure.
+List<Session> buildDefaultSessions() {
+  return [
+    buildSession(
+      id: 'a',
+      sportId: 'course',
+      durationMin: 45,
+      points: 45,
+      date: DateTime(2026, 3, 19),
+      sport: buildSport(id: 'course', name: 'Course à pied'),
+    ),
+    buildSession(
+      id: 'b',
+      sportId: 'velo',
+      durationMin: 90,
+      points: 90,
+      date: DateTime(2026, 3, 20),
+      sport: buildSport(id: 'velo', name: 'Vélo', emoji: '🚴'),
+    ),
+  ];
 }
 
-Widget buildScreen({Profile? profile, ProfileStats? stats}) {
+Widget buildScreen({Profile? profile, List<Session>? sessions}) {
   return buildTestApp(
     overrides: [
       currentProfileProvider.overrideWith((ref) => profile ?? buildProfile()),
-      profileStatsProvider.overrideWith(
-        (ref) => AsyncValue.data(stats ?? buildStats()),
+      // Pinned so "cette semaine" means the week of _today in every run.
+      todayProvider.overrideWithValue(_today),
+      userSessionsProvider.overrideWith(
+        (ref) async => sessions ?? buildDefaultSessions(),
       ),
     ],
     child: const Scaffold(body: ProfileScreen()),
@@ -165,7 +165,9 @@ void main() {
       expect(find.text('Plus longue séance'), findsOneWidget);
       // Once as the longest session, once as the time logged on the bike.
       expect(find.text('1 h 30'), findsNWidgets(2));
-      expect(find.text('2 h 15'), findsOneWidget);
+      // Once in the period totals (DURÉE) and once in the month summary
+      // (TEMPS): the same 2 h 15 read over two different windows.
+      expect(find.text('2 h 15'), findsNWidgets(2));
       expect(find.text('Points au total'), findsOneWidget);
       expect(find.text('Série en cours'), findsOneWidget);
       // The total, the best week and the best month all land on 135.
@@ -263,7 +265,7 @@ void main() {
     testWidgets('invites a first session instead of showing empty panels',
         (tester) async {
       await tester.pumpWidget(
-        buildScreen(stats: buildStats(sessions: const <Session>[])),
+        buildScreen(sessions: const <Session>[]),
       );
       await tester.pumpAndSettle();
 
