@@ -19,6 +19,8 @@
   ·
   <a href="#démarrage-rapide">Démarrer en 3 commandes</a>
   ·
+  <a href="#tu-avais-déjà-cloné--deux-commandes-une-fois"><b>Déjà cloné ? À lire</b></a>
+  ·
   <a href="CAHIER_DES_CHARGES.md">Cahier des charges</a>
 </p>
 
@@ -113,6 +115,47 @@ Une clé gratuite [api-ninjas.com](https://api-ninjas.com/api/caloriesburned)
 (sans carte bancaire) ne sert qu'à obtenir des calories calculées par l'API
 externe. Sans elle, l'app retombe sur la formule MET et la démonstration reste
 complète : c'est le repli décrit plus bas.
+
+## Tu avais déjà cloné ? Deux commandes, une fois
+
+Si ton clone est antérieur au merge `216eec6`, l'app ne marchera pas tant que tu
+n'as pas lancé ceci — et le symptôme ne ressemble pas à sa cause :
+
+```
+git pull
+npx supabase@latest db reset
+```
+
+**Pourquoi `git pull`.** « Ajouter un lieu » et « Suivre le parcours en direct »
+sont apportés par `lib/widgets/venue_picker.dart` et
+`lib/screens/sessions/track_route_screen.dart`, qui ne sont arrivés sur `main`
+qu'avec ce merge. Un clone antérieur ne contient pas ces fichiers : les deux
+boutons sont simplement absents de l'écran d'enregistrement. Rien n'est cassé,
+le code n'est pas là.
+
+**Pourquoi `db reset`, et pourquoi il n'est pas optionnel.** Deux migrations ont
+longtemps porté le même numéro, `20260911140000`. Supabase indexe ses migrations
+sur ce préfixe : sur une base créée à cette époque, **une des deux n'a jamais
+tourné**, et c'est en général celle qui ajoute les colonnes du lieu. Renommer le
+fichier répare les clones neufs, pas une base déjà créée — il faut la rejouer.
+Le reset recharge aussi le jeu de démonstration.
+
+**Ce qui a changé ailleurs, et qui peut te surprendre :**
+
+- `lib/core/config/env.dart` visait un projet Supabase hébergé **qui a été
+  supprimé** — son domaine répond `NXDOMAIN`. Il vise maintenant la stack
+  locale, donc `dart_define.json` n'est plus nécessaire pour lancer sur le web.
+  Si tu en avais un, il continue de fonctionner : il surcharge toujours.
+- `dart_define.example.json` porte désormais les valeurs de l'émulateur Android
+  (`10.0.2.2`) plutôt qu'un gabarit de projet hébergé, parce que l'émulateur est
+  le seul cas qui exige encore ce fichier.
+- Le suivi GPS n'est proposé que pour **Course à pied, Marche et Vélo**. Sur les
+  six autres sports, l'absence du bouton est le comportement attendu.
+- Dans un navigateur, la géolocalisation ne renvoie qu'un point fixe : aucun
+  tracé ne se dessine. Pour démontrer le GPS, il faut l'émulateur ou un
+  téléphone.
+- L'APK publié dans les releases vise encore la base supprimée. Il faut le
+  recompiler avant de le distribuer.
 
 ## Démarrage rapide
 
