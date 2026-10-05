@@ -158,8 +158,9 @@ recevoir de courrier, et leurs portraits sont générés, pas photographiés.
 
 ## Configuration — pointer sur ton propre projet Supabase
 
-Pour travailler sur ta propre base plutôt que sur la base partagée, ces deux
-valeurs prennent le pas sur les valeurs par défaut :
+Le démarrage rapide fait tourner l'app sur la stack locale. Pour viser un
+projet Supabase hébergé à la place — le tien, ou un projet d'équipe — ces deux
+valeurs prennent le pas sur celles de `env.dart` :
 
 1. Copie `dart_define.example.json` en `dart_define.json` (déjà ignoré par
    git).
@@ -187,7 +188,7 @@ supabase link --project-ref <ton-project-ref>
 supabase db push
 ```
 
-C'est suffisant : la liste fixe des 10 sports (cahier des charges section 3)
+C'est suffisant : la liste fixe des sports (cahier des charges section 3)
 est insérée par la migration `20260910120000_v1_rankings_and_calories.sql`
 elle-même, avec le nom d'activité anglais (`external_activity_name`) attendu
 par l'API de calories. Rien à exécuter à la main après le `db push`.
@@ -243,18 +244,18 @@ La séance stocke alors `calories_estimated = true`, et l'historique affiche
 passer pour une valeur mesurée. C'est ce qui permet de faire une démo complète
 sans clé api-ninjas et sans réseau.
 
-## Développement 100 % local (sans compte Supabase)
+## Développement 100 % local — le détail
 
-Alternative au projet cloud : la CLI Supabase monte toute la stack en
-conteneurs Docker sur ta machine. Même schéma, mêmes migrations, aucun compte
-à créer. Il faut Docker Desktop démarré.
+Le démarrage rapide plus haut suffit pour lancer l'app. Cette section donne ce
+qu'il laisse de côté : les deux hôtes à utiliser selon la cible, l'Edge
+Function, et la simulation GPS.
 
 ```
 npx supabase@latest start
 ```
 
 Les migrations de `supabase/migrations/` s'appliquent automatiquement, donc les
-10 sports sont là dès le premier démarrage. La commande affiche à la fin
+9 sports sont là dès le premier démarrage. La commande affiche à la fin
 `API_URL` et `PUBLISHABLE_KEY` : reporte-les dans `dart_define.json`, mais
 **avec l'hôte `10.0.2.2` au lieu de `127.0.0.1`** — c'est l'alias par lequel
 l'émulateur Android joint la machine hôte :

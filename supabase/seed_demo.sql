@@ -116,7 +116,7 @@ on conflict (id) do update
       team_id = excluded.team_id,
       avatar_url = excluded.avatar_url;
 
--- Their history. Enough sessions, spread over the last four weeks, for the
+-- Their history. Enough sessions, spread over the last month, for the
 -- individual leaderboard to have a shape and for the six-month chart to have
 -- something in it. Football and basket-ball are what feed the team standings.
 --
