@@ -10,6 +10,7 @@ import '../../models/sport.dart';
 import '../../models/venue.dart';
 import '../../providers/record_session_controller.dart';
 import '../../providers/sport_provider.dart';
+import '../../widgets/content_width.dart';
 import '../../widgets/async_value_view.dart';
 import '../../widgets/duration_wheel_picker.dart';
 import '../../widgets/motion.dart';
@@ -189,7 +190,7 @@ class _RecordSessionScreenState extends ConsumerState<RecordSessionScreen> {
       padding: const EdgeInsets.all(24),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(maxWidth: ContentWidth.maxWidth),
           child: Form(
             key: _formKey,
             child: Column(

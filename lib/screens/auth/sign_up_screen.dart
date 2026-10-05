@@ -6,6 +6,7 @@ import '../../core/domain/body_weight_range.dart';
 import '../../core/localization/auth_error_messages.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/content_width.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -104,7 +105,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(maxWidth: ContentWidth.maxWidth),
             child: Form(
               key: _formKey,
               child: Column(
