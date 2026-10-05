@@ -56,3 +56,7 @@ dart_define.json
 # Same file for the web build, which reaches the local stack on 127.0.0.1
 # instead of the Android emulator's 10.0.2.2 alias.
 dart_define.web.json
+
+# Dumps de la base locale pris avant un reset. Jamais committes : ils portent
+# les lignes de auth.users.
+.local-backup/

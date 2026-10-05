@@ -71,7 +71,7 @@ Captures prises sur le jeu de démonstration, avec le compte `camille.roussel`.
 
 | Je veux… | Lien | Ce qu'il faut installer |
 | --- | --- | --- |
-| **Juste essayer l'app** | [**Télécharger l'APK Android**](https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/releases/latest) | Rien. Un téléphone Android suffit |
+| **Juste essayer l'app** | [**Télécharger l'APK Android**](https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/releases/latest) | Un téléphone Android — mais voir l'avertissement du démarrage rapide : cet APK vise une base qui n'existe plus |
 | **Lire ou modifier le code** | [**Télécharger le code en .zip**](https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport/archive/refs/heads/main.zip) | Flutter |
 | **Suivre les mises à jour** | `git clone` ci-dessous | Git + Flutter |
 
@@ -80,9 +80,10 @@ git clone https://github.com/MaximeBlanco/Projet_Xefi_Sante_Sport.git
 cd Projet_Xefi_Sante_Sport
 ```
 
-Les trois options donnent la même app, connectée à la même base de démonstration
-déjà peuplée : il n'y a **aucune clé à demander et aucun compte à créer** pour la
-faire tourner. Les identifiants de démo sont plus bas.
+Les trois options donnent la même app. Elle a besoin d'une base Supabase, que
+la stack locale monte en une commande — migrations et jeu de démonstration
+compris, **sans compte à créer ni clé à demander**. Les identifiants de démo
+sont plus bas.
 
 ### Installer l'APK sur un téléphone Android
 
@@ -96,39 +97,58 @@ suivi GPS du parcours, décrit plus bas.
 
 ## Prérequis
 
-Pour **lancer l'app sur la base partagée**, une seule chose :
+Pour **lancer l'app**, deux choses :
 
 - Flutter (SDK `^3.13.3`, voir `pubspec.yaml`)
+- Docker Desktop démarré, pour la stack Supabase locale
 
-Pour **la faire tourner sur ta propre base** — développement, ou si tu veux tes
-données à toi — il faut en plus :
+Pour **la faire tourner sur un projet Supabase hébergé** plutôt qu'en local :
 
 - Un projet [Supabase](https://supabase.com) (gratuit)
 - La [CLI Supabase](https://supabase.com/docs/guides/cli), connectée à ton
   compte : elle applique les migrations **et** déploie l'Edge Function, les
   deux sont nécessaires pour que l'app tourne de bout en bout
-- Une clé gratuite [api-ninjas.com](https://api-ninjas.com/api/caloriesburned)
-  (compte gratuit, sans carte bancaire) pour le calcul des calories
+
+Une clé gratuite [api-ninjas.com](https://api-ninjas.com/api/caloriesburned)
+(sans carte bancaire) ne sert qu'à obtenir des calories calculées par l'API
+externe. Sans elle, l'app retombe sur la formule MET et la démonstration reste
+complète : c'est le repli décrit plus bas.
 
 ## Démarrage rapide
 
-Il n'y a rien à configurer. L'app pointe par défaut sur un projet Supabase
-partagé, déjà migré et peuplé :
+Docker Desktop démarré, puis :
+
+```
+npx supabase@latest start
+cp dart_define.example.json dart_define.web.json
+```
+
+`supabase start` affiche `API_URL` et `PUBLISHABLE_KEY` à la fin. Reporte-les
+dans `dart_define.web.json` — l'URL est `http://127.0.0.1:54321` pour un
+navigateur. Puis :
 
 ```
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --dart-define-from-file=dart_define.web.json
 ```
 
-Les identifiants de ce projet vivent dans `lib/core/config/env.dart`. Les
-publier est volontaire — une clé `anon` est publique par nature, elle part de
-toute façon dans le bundle JavaScript de n'importe quelle app web Supabase, et
-ce qui protège les données est le row level security, activé sur chaque table.
-La clé `service_role`, elle, n'apparaît nulle part.
+La base arrive migrée **et peuplée** : `supabase/config.toml` charge
+`supabase/seed_demo.sql` à chaque `supabase start` ou `supabase db reset`, donc
+il y a des équipes, des collègues, des séances et un calendrier dès le premier
+lancement.
+
+> `lib/core/config/env.dart` porte en valeur par défaut l'adresse d'un projet
+> Supabase hébergé qui **n'existe plus**. Lancer l'app sans
+> `--dart-define-from-file` échoue donc à joindre sa base, et l'APK publié dans
+> les releases est concerné de la même façon. Les clés `anon` d'un projet
+> Supabase sont publiques par nature — elles partent de toute façon dans le
+> bundle JavaScript de n'importe quelle app web — et ce qui protège les données
+> est le row level security, activé sur chaque table ; la clé `service_role`,
+> elle, n'apparaît nulle part.
 
 ### Comptes de démonstration
 
-La base partagée est peuplée par `supabase/seed_demo.sql` : des équipes, des
+La base est peuplée par `supabase/seed_demo.sql` : des équipes, des
 collègues, leurs séances sur les dernières semaines et un calendrier
 d'événements. Tous les comptes ont le même mot de passe, **`DemoXefi!2026`** —
 par exemple `camille.roussel@demo.xefi.local` ou `yanis.chevalier@demo.xefi.local`.
