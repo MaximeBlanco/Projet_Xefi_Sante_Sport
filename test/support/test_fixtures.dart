@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/testing.dart';
+import 'package:monapp/models/contact.dart';
 import 'package:monapp/models/gps_point.dart';
+import 'package:monapp/models/member_summary.dart';
 import 'package:monapp/models/profile.dart';
 import 'package:monapp/models/ranking_entry.dart';
 import 'package:monapp/models/session.dart';
@@ -175,5 +178,58 @@ TeamRankingEntry buildTeamRankingEntry({
     sessionCount: sessionCount,
     currentRank: currentRank,
     previousRank: previousRank,
+  );
+}
+
+
+MemberSummary buildMemberSummary({
+  String id = 'user-2',
+  String name = 'Théo Marchand',
+  String? avatarUrl,
+}) {
+  return MemberSummary(id: id, name: name, avatarUrl: avatarUrl);
+}
+
+/// A link seen from `user-1`, the member [buildSignedInUser] stands for.
+///
+/// The default is a request somebody else sent, because that is the only shape
+/// of link the person looking at it can act on.
+Contact buildContact({
+  String id = 'contact-1',
+  String requesterId = 'user-2',
+  String addresseeId = 'user-1',
+  ContactStatus status = ContactStatus.accepted,
+  String peerName = 'Théo Marchand',
+  String? peerAvatarUrl,
+  DateTime? createdAt,
+}) {
+  const viewerId = 'user-1';
+
+  return Contact(
+    id: id,
+    requesterId: requesterId,
+    addresseeId: addresseeId,
+    status: status,
+    createdAt: createdAt ?? DateTime(2026, 3, 10),
+    peer: buildMemberSummary(
+      id: requesterId == viewerId ? addresseeId : requesterId,
+      name: peerName,
+      avatarUrl: peerAvatarUrl,
+    ),
+  );
+}
+
+/// A Supabase client whose PostgREST calls are answered by [respond].
+///
+/// The repositories are the one layer that speaks to the database, so testing
+/// them means answering for the database rather than mocking the query builder
+/// they are made of: what travels on the wire is what the stub sees.
+SupabaseClient buildStubSupabaseClient(MockClientHandler respond) {
+  return SupabaseClient(
+    'https://stub.supabase.co',
+    'stub-anon-key',
+    // Nothing signs in here, and a refresh timer would outlive the test.
+    authOptions: const AuthClientOptions(autoRefreshToken: false),
+    httpClient: MockClient(respond),
   );
 }
